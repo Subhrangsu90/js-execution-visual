@@ -818,8 +818,11 @@ body::before {
   font-family: var(--font-mono);
   font-size: var(--font-size-sm);
   transition: all var(--duration-normal) var(--ease-out);
-  animation: stackPush var(--duration-slow) var(--ease-spring) both;
   flex-shrink: 0;
+}
+
+.stack-frame-enter {
+  animation: stackPush var(--duration-normal) var(--ease-spring) both;
 }
 
 .stack-frame.active {
@@ -903,8 +906,12 @@ body::before {
   border-radius: var(--radius-md);
   border: 1px solid var(--border-subtle);
   overflow: hidden;
-  animation: fadeSlideIn var(--duration-slow) var(--ease-spring) both;
   flex-shrink: 0;
+  transition: border-color var(--duration-fast);
+}
+
+.exec-context-enter {
+  animation: fadeSlideIn var(--duration-normal) var(--ease-spring) both;
 }
 
 .exec-context.active {
@@ -1082,9 +1089,12 @@ body::before {
   border: 1px solid var(--border-subtle);
   font-family: var(--font-mono);
   font-size: var(--font-size-xs);
-  animation: memFadeIn var(--duration-normal) var(--ease-out) both;
   transition: all var(--duration-fast);
   flex-shrink: 0;
+}
+
+.mem-stack-entry.mem-entry-enter {
+  animation: memFadeIn var(--duration-normal) var(--ease-out) both;
 }
 
 .mem-stack-entry.highlight {
@@ -1119,9 +1129,12 @@ body::before {
   background: var(--bg-surface);
   font-family: var(--font-mono);
   font-size: var(--font-size-xs);
-  animation: memScaleIn var(--duration-slow) var(--ease-spring) both;
   transition: all var(--duration-fast);
   flex-shrink: 0;
+}
+
+.mem-heap-object.mem-entry-enter {
+  animation: memScaleIn var(--duration-slow) var(--ease-spring) both;
 }
 
 .mem-heap-object.highlight {
@@ -1274,8 +1287,12 @@ body::before {
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
   overflow: hidden;
-  animation: fadeSlideIn var(--duration-normal) var(--ease-out) both;
   flex-shrink: 0;
+  transition: border-color var(--duration-fast);
+}
+
+.scope-block-enter {
+  animation: fadeSlideIn var(--duration-normal) var(--ease-out) both;
 }
 
 .scope-block.active {
@@ -1532,6 +1549,11 @@ body::before {
   background: rgba(245, 158, 11, 0.06);
 }
 
+.console-entry-info {
+  color: var(--accent-sky);
+  background: rgba(56, 189, 248, 0.06);
+}
+
 .console-prefix {
   color: var(--text-dim);
   flex-shrink: 0;
@@ -1540,6 +1562,127 @@ body::before {
 
 .console-content {
   word-break: break-all;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.console-group-header {
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  font-weight: 700;
+  border-left: 2px solid var(--accent-indigo);
+}
+
+/* Console Table */
+.console-table-wrapper {
+  overflow-x: auto;
+  max-width: 100%;
+  margin: 4px 0;
+}
+
+.console-table {
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+}
+
+.console-table th,
+.console-table td {
+  padding: 4px 10px;
+  border: 1px solid var(--border-subtle);
+}
+
+.console-table th {
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+.table-idx-col {
+  color: var(--accent-violet);
+  font-weight: 600;
+  width: 40px;
+}
+
+.console-table tr:hover {
+  background: var(--bg-panel-hover);
+}
+
+/* Console Trace */
+.console-trace {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+
+.console-trace-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-weight: 600;
+  color: var(--accent-amber);
+}
+
+.console-trace-stack {
+  margin-left: 18px;
+  border-left: 1px dashed var(--border-default);
+  padding-left: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.console-trace-frame {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: var(--font-size-xs);
+}
+
+.trace-fn {
+  color: var(--accent-violet);
+  font-weight: 600;
+}
+
+.trace-loc {
+  color: var(--text-dim);
+}
+
+/* Console Dir */
+.console-dir-content {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+.console-dir-tree {
+  margin-left: 6px;
+  border-left: 1px solid var(--border-subtle);
+  padding-left: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dir-prop {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.dir-key {
+  color: var(--accent-indigo);
+  font-weight: 600;
 }
 
 @keyframes consoleFadeIn {
@@ -1600,6 +1743,22 @@ body::before {
 
 .val-reference {
   color: var(--color-reference);
+}
+
+.val-flash {
+  animation: valFlash 0.5s var(--ease-out);
+  display: inline-block;
+}
+
+@keyframes valFlash {
+  0% {
+    color: var(--accent-amber);
+    text-shadow: 0 0 8px rgba(245, 158, 11, 0.7);
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* ===================================================================

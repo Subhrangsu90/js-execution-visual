@@ -85,16 +85,131 @@ export class Interpreter {
   // ─── BUILT-INS ────────────────────────────────────────────────
 
   _setupBuiltins() {
-    // console object
+    // State for console counters & timers
+    this._consoleCounters = new Map();
+    this._consoleTimers = new Map();
+
+    // Comprehensive MDN console API implementation
     const consoleObj = {
       log: (...args) => {
-        this.consoleOutput.push({ type: 'log', args: args.map(a => this._displayValue(a)) });
+        this.consoleOutput.push({ type: 'log', args: args.map(a => this._cloneForConsole(a)) });
       },
-      error: (...args) => {
-        this.consoleOutput.push({ type: 'error', args: args.map(a => this._displayValue(a)) });
+      info: (...args) => {
+        this.consoleOutput.push({ type: 'info', args: args.map(a => this._cloneForConsole(a)) });
       },
       warn: (...args) => {
-        this.consoleOutput.push({ type: 'warn', args: args.map(a => this._displayValue(a)) });
+        this.consoleOutput.push({ type: 'warn', args: args.map(a => this._cloneForConsole(a)) });
+      },
+      error: (...args) => {
+        this.consoleOutput.push({ type: 'error', args: args.map(a => this._cloneForConsole(a)) });
+      },
+      debug: (...args) => {
+        this.consoleOutput.push({ type: 'log', args: args.map(a => this._cloneForConsole(a)) });
+      },
+      table: (tabularData, properties) => {
+        this.consoleOutput.push({
+          type: 'table',
+          data: this._cloneForConsole(tabularData),
+          columns: properties,
+        });
+      },
+      assert: (assertion, ...args) => {
+        if (!assertion) {
+          const messageArgs = args.length > 0 ? args.map(a => this._cloneForConsole(a)) : ['console.assert'];
+          this.consoleOutput.push({
+            type: 'error',
+            args: ['Assertion failed:', ...messageArgs],
+          });
+        }
+      },
+      count: (label = 'default') => {
+        const strLabel = String(label);
+        const current = (this._consoleCounters.get(strLabel) || 0) + 1;
+        this._consoleCounters.set(strLabel, current);
+        this.consoleOutput.push({
+          type: 'log',
+          args: [`${strLabel}: ${current}`],
+        });
+      },
+      countReset: (label = 'default') => {
+        const strLabel = String(label);
+        if (this._consoleCounters.has(strLabel)) {
+          this._consoleCounters.set(strLabel, 0);
+        } else {
+          this.consoleOutput.push({
+            type: 'warn',
+            args: [`Count for '${strLabel}' does not exist`],
+          });
+        }
+      },
+      time: (label = 'default') => {
+        const strLabel = String(label);
+        if (this._consoleTimers.has(strLabel)) {
+          this.consoleOutput.push({
+            type: 'warn',
+            args: [`Timer '${strLabel}' already exists`],
+          });
+        } else {
+          this._consoleTimers.set(strLabel, Date.now());
+        }
+      },
+      timeLog: (label = 'default', ...args) => {
+        const strLabel = String(label);
+        if (this._consoleTimers.has(strLabel)) {
+          const elapsed = (Date.now() - this._consoleTimers.get(strLabel));
+          const extra = args.map(a => this._cloneForConsole(a));
+          this.consoleOutput.push({
+            type: 'log',
+            args: [`${strLabel}: ${elapsed.toFixed(2)} ms`, ...extra],
+          });
+        } else {
+          this.consoleOutput.push({
+            type: 'warn',
+            args: [`Timer '${strLabel}' does not exist`],
+          });
+        }
+      },
+      timeEnd: (label = 'default') => {
+        const strLabel = String(label);
+        if (this._consoleTimers.has(strLabel)) {
+          const elapsed = (Date.now() - this._consoleTimers.get(strLabel));
+          this._consoleTimers.delete(strLabel);
+          this.consoleOutput.push({
+            type: 'info',
+            args: [`${strLabel}: ${elapsed.toFixed(2)} ms - timer ended`],
+          });
+        } else {
+          this.consoleOutput.push({
+            type: 'warn',
+            args: [`Timer '${strLabel}' does not exist`],
+          });
+        }
+      },
+      dir: (item) => {
+        this.consoleOutput.push({
+          type: 'dir',
+          args: [this._cloneForConsole(item)],
+        });
+      },
+      trace: (...args) => {
+        const stackSnapshot = this.callStack.map(f => ({ name: f.name, line: f.line }));
+        this.consoleOutput.push({
+          type: 'trace',
+          args: args.length > 0 ? args.map(a => this._cloneForConsole(a)) : ['console.trace'],
+          stack: stackSnapshot,
+        });
+      },
+      group: (label = 'console.group') => {
+        this.consoleOutput.push({ type: 'group', label: String(label) });
+      },
+      groupCollapsed: (label = 'console.group') => {
+        this.consoleOutput.push({ type: 'group', label: String(label) });
+      },
+      groupEnd: () => {
+        this.consoleOutput.push({ type: 'groupEnd' });
+      },
+      clear: () => {
+        this.consoleOutput.push({ type: 'clear' });
       },
     };
     consoleObj.__isBuiltin = true;
@@ -968,6 +1083,27 @@ export class Interpreter {
   }
 
   // ─── HELPERS ──────────────────────────────────────────────────
+
+  _cloneForConsole(val, depth = 0) {
+    if (depth > 5) return '{…}';
+    if (val === null || val === undefined) return val;
+    if (typeof val === 'number' || typeof val === 'boolean' || typeof val === 'string') return val;
+    if (val && val.__isFn) return { __isFn: true, name: val.name || 'anonymous' };
+    if (typeof val === 'function') return { __isFn: true, name: val.__name || val.name || 'native' };
+    if (Array.isArray(val)) {
+      return val.map(item => this._cloneForConsole(item, depth + 1));
+    }
+    if (typeof val === 'object') {
+      const copy = {};
+      for (const [k, v] of Object.entries(val)) {
+        if (!k.startsWith('__')) {
+          copy[k] = this._cloneForConsole(v, depth + 1);
+        }
+      }
+      return copy;
+    }
+    return String(val);
+  }
 
   _displayValue(val) {
     if (val === null) return 'null';

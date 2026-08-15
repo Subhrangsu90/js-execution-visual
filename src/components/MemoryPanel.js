@@ -1,9 +1,6 @@
 /**
  * MemoryPanel — Stack + Heap visualization with SVG reference arrows.
- *
- * Stack side (left): shows variable names with primitive values inline.
- * Heap side (right): shows objects, arrays, functions as structured cards.
- * SVG arrows connect stack references to their heap targets.
+ * Uses in-place DOM updates so cards and rows persist without rebuilding jitter.
  */
 import { icons } from '../utils/icons.js';
 
@@ -12,8 +9,10 @@ export class MemoryPanel {
     this.stackEl = stackEl;
     this.heapEl = heapEl;
     this.arrowsSvg = arrowsSvg;
-    this._refDots = new Map();  // heapId → stack dot element
+    this._refDots = new Map();   // heapId → stack dot element
     this._heapCards = new Map(); // heapId → heap card element
+    this._stackRows = new Map(); // varName → { el, valTarget, lastVal }
+    this._heapMap = new Map();   // heapId → { el, lastPropsJson }
     this._lastStack = [];
 
     // Redraw arrows when scrolling inside stack, heap, or parent container
@@ -41,8 +40,6 @@ export class MemoryPanel {
   }
 
   _renderStack(entries) {
-    // Keep the section label
-    this.stackEl.innerHTML = '<div class="memory-section-label">Stack</div>';
     this._refDots.clear();
 
     // Filter out builtins
@@ -50,172 +47,298 @@ export class MemoryPanel {
       !['console', 'setTimeout', 'setInterval', 'Promise', 'undefined', 'NaN', 'Infinity', 'Math', 'Array', 'arguments'].includes(e.name)
     );
 
+    const emptyState = this.stackEl.querySelector('.empty-state');
+
     if (filtered.length === 0) {
-      this.stackEl.innerHTML += `<div class="empty-state" style="padding:12px"><div class="empty-state-icon">${icons.memory(20)}</div><div>No variables</div></div>`;
+      if (!emptyState || this._stackRows.size > 0) {
+        this.stackEl.innerHTML = `
+          <div class="memory-section-label">Stack</div>
+          <div class="empty-state" style="padding:12px">
+            <div class="empty-state-icon">${icons.memory(20)}</div>
+            <div>No variables</div>
+          </div>`;
+        this._stackRows.clear();
+      }
       return;
     }
 
-    for (const entry of filtered) {
-      const el = document.createElement('div');
-      el.className = 'mem-stack-entry';
-      el.dataset.scope = entry.scope;
+    if (emptyState) {
+      emptyState.remove();
+    }
 
-      if (entry.heapId) {
-        // Reference type → show dot + type label
+    // Ensure section label exists
+    if (!this.stackEl.querySelector('.memory-section-label')) {
+      const lbl = document.createElement('div');
+      lbl.className = 'memory-section-label';
+      lbl.textContent = 'Stack';
+      this.stackEl.prepend(lbl);
+    }
+
+    const currentNames = new Set();
+
+    filtered.forEach(entry => {
+      currentNames.add(entry.name);
+      const isRef = entry.isRef;
+      const refTarget = entry.refTarget;
+      const valStr = isRef
+        ? `<span class="val-reference">${entry.value}</span>`
+        : this._formatPrimitive(entry.value);
+
+      let rowData = this._stackRows.get(entry.name);
+
+      if (!rowData) {
+        const el = document.createElement('div');
+        el.className = 'mem-stack-entry mem-entry-enter';
+        el.dataset.varName = entry.name;
+
         el.innerHTML = `
-          <span class="mem-var-name">${this._esc(entry.name)}</span>
-          <span class="mem-var-value val-reference">${this._esc(entry.display)}</span>
-          <span class="mem-ref-dot" data-heap="${entry.heapId}"></span>
+          <span class="mem-var-name">${this._escapeHtml(entry.name)}</span>
+          <span class="mem-var-value val-target">${valStr}</span>
+          ${isRef ? `<span class="mem-ref-dot" data-ref="${refTarget}"></span>` : ''}
         `;
-        this._refDots.set(entry.heapId, el.querySelector('.mem-ref-dot'));
+
+        this.stackEl.appendChild(el);
+
+        rowData = {
+          el,
+          valTarget: el.querySelector('.val-target'),
+          dotEl: el.querySelector('.mem-ref-dot'),
+          lastVal: JSON.stringify(entry.value),
+          isRef,
+          refTarget,
+        };
+
+        this._stackRows.set(entry.name, rowData);
       } else {
-        // Primitive → show value inline
-        const valClass = `val-${entry.type}`;
-        el.innerHTML = `
-          <span class="mem-var-name">${this._esc(entry.name)}</span>
-          <span class="mem-var-value ${valClass}">${this._esc(entry.display)}</span>
-        `;
+        // In-place update value without rebuilding
+        const currentValJson = JSON.stringify(entry.value);
+        if (rowData.lastVal !== currentValJson || rowData.isRef !== isRef || rowData.refTarget !== refTarget) {
+          rowData.valTarget.innerHTML = valStr;
+          rowData.valTarget.classList.remove('val-flash');
+          void rowData.valTarget.offsetWidth;
+          rowData.valTarget.classList.add('val-flash');
+
+          // Handle ref dot update
+          if (isRef && !rowData.dotEl) {
+            const dot = document.createElement('span');
+            dot.className = 'mem-ref-dot';
+            dot.dataset.ref = refTarget;
+            rowData.el.appendChild(dot);
+            rowData.dotEl = dot;
+          } else if (!isRef && rowData.dotEl) {
+            rowData.dotEl.remove();
+            rowData.dotEl = null;
+          } else if (isRef && rowData.dotEl) {
+            rowData.dotEl.dataset.ref = refTarget;
+          }
+
+          rowData.lastVal = currentValJson;
+          rowData.isRef = isRef;
+          rowData.refTarget = refTarget;
+        }
       }
 
-      this.stackEl.appendChild(el);
+      if (isRef && rowData.dotEl) {
+        this._refDots.set(refTarget, rowData.dotEl);
+      }
+    });
+
+    // Remove deleted variables
+    for (const [name, rowData] of this._stackRows.entries()) {
+      if (!currentNames.has(name)) {
+        rowData.el.remove();
+        this._stackRows.delete(name);
+      }
     }
   }
 
   _renderHeap(heap) {
-    this.heapEl.innerHTML = '<div class="memory-section-label">Heap</div>';
     this._heapCards.clear();
+    const heapIds = Object.keys(heap);
+    const emptyState = this.heapEl.querySelector('.empty-state');
 
-    const BUILTIN_NAMES = ['log', 'error', 'warn', 'resolve', 'floor', 'ceil', 'round', 'random', 'max', 'min', 'abs', 'pow', 'sqrt', 'isArray'];
-    const entries = Object.values(heap).filter(h => {
-      if (h.native) return false;
-      // Skip built-in functions
-      if (h.type === 'function' && (h.native || BUILTIN_NAMES.includes(h.name))) return false;
-      // Skip built-in objects (console, Math, Promise, Array)
-      if (h.type === 'object') {
-        const props = Object.keys(h.properties || {});
-        if (props.includes('log') && props.includes('error')) return false; // console
-        if (props.includes('floor') && props.includes('ceil')) return false; // Math
-        if (props.includes('resolve')) return false; // Promise
-        if (props.includes('isArray')) return false; // Array
+    if (heapIds.length === 0) {
+      if (!emptyState || this._heapMap.size > 0) {
+        this.heapEl.innerHTML = `
+          <div class="memory-section-label">Heap</div>
+          <div class="empty-state" style="padding:12px">
+            <div class="empty-state-icon">${icons.memory(20)}</div>
+            <div>Heap empty</div>
+          </div>`;
+        this._heapMap.clear();
       }
-      return true;
-    });
-
-    if (entries.length === 0) {
-      this.heapEl.innerHTML += `<div class="empty-state" style="padding:12px"><div class="empty-state-icon">${icons.memory(20)}</div><div>Heap empty</div></div>`;
       return;
     }
 
-    for (const obj of entries) {
-      const el = document.createElement('div');
-      el.className = 'mem-heap-object';
-      el.dataset.heapId = obj.id;
+    if (emptyState) {
+      emptyState.remove();
+    }
 
-      let contentHtml = '';
+    if (!this.heapEl.querySelector('.memory-section-label')) {
+      const lbl = document.createElement('div');
+      lbl.className = 'memory-section-label';
+      lbl.textContent = 'Heap';
+      this.heapEl.prepend(lbl);
+    }
 
-      if (obj.type === 'object') {
-        const props = obj.properties || {};
-        const keys = Object.keys(props);
-        for (const key of keys.slice(0, 8)) {
-          const p = props[key];
-          const valClass = `val-${p.type}`;
-          contentHtml += `
-            <div class="mem-heap-prop">
-              <span class="mem-prop-key">${this._esc(key)}:</span>
-              <span class="mem-prop-value ${valClass}">${this._esc(p.display)}</span>
-            </div>`;
-        }
-        if (keys.length > 8) {
-          contentHtml += `<div class="mem-heap-prop"><span class="mem-prop-key" style="color:var(--text-dim)">…${keys.length - 8} more</span></div>`;
-        }
-      } else if (obj.type === 'array') {
-        const elems = obj.elements || [];
-        for (const item of elems.slice(0, 6)) {
-          const valClass = `val-${item.type}`;
-          contentHtml += `
-            <div class="mem-heap-prop">
-              <span class="mem-prop-key">[${item.index}]</span>
-              <span class="mem-prop-value ${valClass}">${this._esc(item.display)}</span>
-            </div>`;
-        }
-        if (elems.length > 6) {
-          contentHtml += `<div class="mem-heap-prop"><span class="mem-prop-key" style="color:var(--text-dim)">…${elems.length - 6} more</span></div>`;
-        }
-      } else if (obj.type === 'function') {
-        contentHtml = `
-          <div class="mem-heap-prop">
-            <span class="mem-prop-key">name:</span>
-            <span class="mem-prop-value val-function">${this._esc(obj.name)}</span>
+    const currentHeapIds = new Set(heapIds);
+
+    heapIds.forEach(id => {
+      const obj = heap[id];
+      const typeClass = `type-${obj.type}`;
+      const typeLabel = obj.type.toUpperCase();
+      const propsJson = JSON.stringify(obj.properties || obj.value || {});
+
+      let heapData = this._heapMap.get(id);
+
+      if (!heapData) {
+        const el = document.createElement('div');
+        el.className = 'mem-heap-object mem-entry-enter';
+        el.dataset.heapId = id;
+
+        el.innerHTML = `
+          <div class="mem-heap-header">
+            <span class="mem-heap-type ${typeClass}">${typeLabel}</span>
+            <span class="mem-heap-id">${id}</span>
           </div>
-          <div class="mem-heap-prop">
-            <span class="mem-prop-key">params:</span>
-            <span class="mem-prop-value val-string">(${(obj.params || []).join(', ')})</span>
+          <div class="mem-heap-body">
+            ${this._buildHeapPropsHtml(obj)}
           </div>
-          ${obj.closureName ? `
-          <div class="mem-heap-prop">
-            <span class="mem-prop-key">closure:</span>
-            <span class="mem-prop-value" style="color:var(--accent-fuchsia)">${this._esc(obj.closureName)}</span>
-          </div>` : ''}
         `;
+
+        this.heapEl.appendChild(el);
+
+        heapData = {
+          el,
+          bodyEl: el.querySelector('.mem-heap-body'),
+          lastPropsJson: propsJson,
+        };
+
+        this._heapMap.set(id, heapData);
+      } else {
+        // In-place update if properties changed
+        if (heapData.lastPropsJson !== propsJson) {
+          heapData.bodyEl.innerHTML = this._buildHeapPropsHtml(obj);
+          heapData.lastPropsJson = propsJson;
+          heapData.el.classList.remove('val-flash');
+          void heapData.el.offsetWidth;
+          heapData.el.classList.add('val-flash');
+        }
       }
 
-      const typeClass = `type-${obj.type}`;
-      el.innerHTML = `
-        <div class="mem-heap-header">
-          <span class="mem-heap-type ${typeClass}">${obj.type}</span>
-          <span class="mem-heap-id">${obj.id}</span>
-        </div>
-        ${contentHtml}
-      `;
+      this._heapCards.set(id, heapData.el);
+    });
 
-      this.heapEl.appendChild(el);
-      this._heapCards.set(obj.id, el);
+    // Remove deallocated heap objects
+    for (const [id, heapData] of this._heapMap.entries()) {
+      if (!currentHeapIds.has(id)) {
+        heapData.el.classList.add('mem-dealloc');
+        setTimeout(() => heapData.el.remove(), 250);
+        this._heapMap.delete(id);
+      }
     }
+  }
+
+  _buildHeapPropsHtml(obj) {
+    let propsHtml = '';
+    if (obj.type === 'object') {
+      const props = Object.entries(obj.properties || {});
+      if (props.length === 0) {
+        propsHtml = '<div style="color:var(--text-dim);font-style:italic">— empty object —</div>';
+      } else {
+        for (const [k, v] of props) {
+          propsHtml += `
+            <div class="mem-heap-prop">
+              <span class="mem-prop-key">${this._escapeHtml(k)}:</span>
+              <span class="mem-prop-value">${this._formatPrimitive(v)}</span>
+            </div>`;
+        }
+      }
+    } else if (obj.type === 'array') {
+      const items = obj.properties || [];
+      if (items.length === 0) {
+        propsHtml = '<div style="color:var(--text-dim);font-style:italic">— empty array —</div>';
+      } else {
+        for (let idx = 0; idx < Math.min(items.length, 10); idx++) {
+          propsHtml += `
+            <div class="mem-heap-prop">
+              <span class="mem-prop-key">[${idx}]:</span>
+              <span class="mem-prop-value">${this._formatPrimitive(items[idx])}</span>
+            </div>`;
+        }
+        if (items.length > 10) {
+          propsHtml += `<div class="mem-heap-prop" style="color:var(--text-dim)">… +${items.length - 10} more</div>`;
+        }
+      }
+    } else if (obj.type === 'function') {
+      propsHtml = `
+        <div class="mem-heap-prop">
+          <span class="mem-prop-key">name:</span>
+          <span class="mem-prop-value" style="color:var(--color-function)">${this._escapeHtml(obj.name || 'anonymous')}</span>
+        </div>
+        <div class="mem-heap-prop">
+          <span class="mem-prop-key">params:</span>
+          <span class="mem-prop-value">(${obj.params ? obj.params.join(', ') : ''})</span>
+        </div>
+        <div class="mem-heap-prop">
+          <span class="mem-prop-key">closure:</span>
+          <span class="mem-prop-value" style="color:var(--accent-fuchsia)">${obj.scope ? obj.scope.name : 'Global'}</span>
+        </div>
+      `;
+    }
+    return propsHtml;
   }
 
   _drawArrows(stackEntries) {
-    // Clear existing arrows
     this.arrowsSvg.innerHTML = '';
+    const containerRect = this.arrowsSvg.getBoundingClientRect();
+    if (containerRect.width === 0 || containerRect.height === 0) return;
 
-    const svgRect = this.arrowsSvg.getBoundingClientRect();
-    if (!svgRect.width) return;
+    for (const [heapId, dotEl] of this._refDots.entries()) {
+      const cardEl = this._heapCards.get(heapId);
+      if (!dotEl || !cardEl) continue;
 
-    for (const entry of stackEntries) {
-      if (!entry.heapId) continue;
-      const dot = this._refDots.get(entry.heapId);
-      const card = this._heapCards.get(entry.heapId);
-      if (!dot || !card) continue;
+      const dotRect = dotEl.getBoundingClientRect();
+      const cardRect = cardEl.getBoundingClientRect();
 
-      const dotRect = dot.getBoundingClientRect();
-      const cardRect = card.getBoundingClientRect();
+      const startX = dotRect.right - containerRect.left;
+      const startY = dotRect.top + dotRect.height / 2 - containerRect.top;
 
-      // Calculate positions relative to the SVG
-      const x1 = dotRect.left + dotRect.width / 2 - svgRect.left;
-      const y1 = dotRect.top + dotRect.height / 2 - svgRect.top;
-      const x2 = cardRect.left - svgRect.left;
-      const y2 = cardRect.top + cardRect.height / 2 - svgRect.top;
+      const endX = cardRect.left - containerRect.left;
+      const endY = cardRect.top + 20 - containerRect.top;
 
-      // Create a curved path
-      const midX = (x1 + x2) / 2;
+      const dx = endX - startX;
+      const cx1 = startX + dx * 0.5;
+      const cy1 = startY;
+      const cx2 = startX + dx * 0.5;
+      const cy2 = endY;
+
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('d', `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`);
-      path.classList.add('active');
-
-      // Arrowhead
-      const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      arrow.setAttribute('cx', x2);
-      arrow.setAttribute('cy', y2);
-      arrow.setAttribute('r', '3');
-      arrow.setAttribute('fill', 'var(--color-reference)');
-
+      path.setAttribute('d', `M ${startX} ${startY} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${endX} ${endY}`);
+      path.setAttribute('class', 'active');
       this.arrowsSvg.appendChild(path);
-      this.arrowsSvg.appendChild(arrow);
     }
   }
 
-  _esc(str) {
+  _formatPrimitive(val) {
+    if (val === null) return '<span class="val-null">null</span>';
+    if (val === undefined) return '<span class="val-undefined">undefined</span>';
+    if (typeof val === 'number') return `<span class="val-number">${val}</span>`;
+    if (typeof val === 'boolean') return `<span class="val-boolean">${val}</span>`;
+    if (typeof val === 'string') {
+      const short = val.length > 16 ? val.slice(0, 16) + '…' : val;
+      return `<span class="val-string">"${this._escapeHtml(short)}"</span>`;
+    }
+    if (val && val.__isFn) return `<span class="val-function">ƒ ${val.name || 'anonymous'}</span>`;
+    if (typeof val === 'function') return `<span class="val-function">ƒ native</span>`;
+    if (Array.isArray(val)) return `<span class="val-array">[Array(${val.length})]</span>`;
+    if (typeof val === 'object') return `<span class="val-object">{…}</span>`;
+    return String(val);
+  }
+
+  _escapeHtml(str) {
     const div = document.createElement('div');
-    div.textContent = String(str ?? '');
+    div.textContent = String(str);
     return div.innerHTML;
   }
 }

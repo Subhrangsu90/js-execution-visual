@@ -1,19 +1,20 @@
 /**
- * ScopeChainPanel — visualizes the lexical scope chain
- * with closure badges, variable lookup paths, and SVG icons.
+ * ScopeChainPanel — persistent in-place DOM updates for lexical scope chain.
+ * Preserves scroll positions, avoids rebuilding cards on every tick, and pulses updated variables.
  */
 import { icons } from '../utils/icons.js';
 
 export class ScopeChainPanel {
   constructor(bodyEl) {
     this.body = bodyEl;
+    this._scopeMap = new Map(); // scopeKey -> { el, connectorEl, varRowMap, lastValues }
   }
 
   update(snapshot) {
     const chain = snapshot.scopeChain || [];
-    this.body.innerHTML = '';
 
     if (chain.length === 0) {
+      this._scopeMap.clear();
       this.body.innerHTML = `
         <div class="empty-state">
           <div class="empty-state-icon">${icons.scope(28)}</div>
@@ -22,21 +23,21 @@ export class ScopeChainPanel {
       return;
     }
 
-    for (let i = 0; i < chain.length; i++) {
-      const scope = chain[i];
+    // Remove empty state
+    const emptyState = this.body.querySelector('.empty-state');
+    if (emptyState) {
+      this.body.innerHTML = '';
+      this._scopeMap.clear();
+    }
 
-      // Connector arrow between scopes
-      if (i > 0) {
-        const connector = document.createElement('div');
-        connector.className = 'scope-connector';
-        connector.textContent = '↓ [[Outer]]';
-        this.body.appendChild(connector);
-      }
+    const currentKeys = new Set();
+    const BUILTINS = ['console', 'setTimeout', 'setInterval', 'Promise', 'undefined', 'NaN', 'Infinity', 'Math', 'Array', 'arguments'];
 
-      const el = document.createElement('div');
-      el.className = `scope-block ${i === 0 ? 'active' : ''}`;
-      el.style.animationDelay = `${i * 60}ms`;
+    chain.forEach((scope, i) => {
+      const key = `scope_${i}_${scope.name}_${scope.type}`;
+      currentKeys.add(key);
 
+      const isActive = i === 0;
       const typeClass = scope.type === 'global' ? 'scope-global'
                       : scope.isClosure ? 'scope-closure'
                       : 'scope-local';
@@ -45,61 +46,142 @@ export class ScopeChainPanel {
                       : scope.type === 'function' ? 'Local'
                       : 'Block';
 
-      // Filter out builtins from global scope display
-      const vars = (scope.variables || []).filter(v =>
-        !['console', 'setTimeout', 'setInterval', 'Promise', 'undefined', 'NaN', 'Infinity', 'Math', 'Array', 'arguments'].includes(v.name)
-      );
+      const vars = (scope.variables || []).filter(v => !BUILTINS.includes(v.name));
 
-      let varsHtml = '';
-      if (vars.length === 0) {
-        varsHtml = '<div class="scope-var" style="color:var(--text-dim);font-style:italic">— empty —</div>';
-      } else {
-        for (const v of vars.slice(0, 10)) {
-          const closureBadge = scope.isClosure ? '<span class="scope-closure-badge">closed</span>' : '';
-          varsHtml += `
-            <div class="scope-var">
-              <span class="scope-var-name">${this._esc(v.name)}</span>
-              ${closureBadge}
-              <span class="scope-var-value">${this._formatVal(v.value)}</span>
-            </div>`;
+      let scopeData = this._scopeMap.get(key);
+
+      if (!scopeData) {
+        // Connector before this scope (if not the first scope)
+        let connectorEl = null;
+        if (i > 0) {
+          connectorEl = document.createElement('div');
+          connectorEl.className = 'scope-connector';
+          connectorEl.textContent = '↓ [[Outer]]';
+          this.body.appendChild(connectorEl);
         }
-        if (vars.length > 10) {
-          varsHtml += `<div class="scope-var" style="color:var(--text-dim)">…${vars.length - 10} more</div>`;
+
+        const el = document.createElement('div');
+        el.className = `scope-block ${isActive ? 'active' : ''} scope-block-enter`;
+        el.innerHTML = `
+          <div class="scope-block-header">
+            <span class="scope-block-name">${this._escapeHtml(scope.name)}</span>
+            <span class="scope-block-type ${typeClass}">${typeLabel}</span>
+          </div>
+          <div class="scope-vars"></div>
+        `;
+        this.body.appendChild(el);
+
+        scopeData = {
+          el,
+          connectorEl,
+          varsContainer: el.querySelector('.scope-vars'),
+          varRowMap: new Map(),
+          lastValues: new Map(),
+        };
+
+        this._scopeMap.set(key, scopeData);
+      } else {
+        // Update active class
+        if (isActive && !scopeData.el.classList.contains('active')) {
+          scopeData.el.classList.add('active');
+        } else if (!isActive && scopeData.el.classList.contains('active')) {
+          scopeData.el.classList.remove('active');
         }
       }
 
-      el.innerHTML = `
-        <div class="scope-block-header">
-          <span class="scope-block-name">${this._esc(scope.name)}</span>
-          <span class="scope-block-type ${typeClass}">${typeLabel}</span>
-        </div>
-        <div class="scope-vars">
-          ${varsHtml}
-        </div>
-      `;
-      this.body.appendChild(el);
+      // In-place variable updates
+      this._updateScopeVars(scopeData, vars, scope.isClosure);
+    });
+
+    // Remove defunct scopes
+    for (const [key, scopeData] of this._scopeMap.entries()) {
+      if (!currentKeys.has(key)) {
+        if (scopeData.connectorEl) scopeData.connectorEl.remove();
+        scopeData.el.remove();
+        this._scopeMap.delete(key);
+      }
     }
   }
 
-  _formatVal(val) {
+  _updateScopeVars(scopeData, vars, isClosure) {
+    const { varsContainer, varRowMap, lastValues } = scopeData;
+
+    if (vars.length === 0) {
+      if (varRowMap.size > 0 || varsContainer.children.length === 0) {
+        varsContainer.innerHTML = '<div class="scope-var" style="color:var(--text-dim);font-style:italic">— empty —</div>';
+        varRowMap.clear();
+        lastValues.clear();
+      }
+      return;
+    }
+
+    if (varsContainer.querySelector('div[style*="italic"]')) {
+      varsContainer.innerHTML = '';
+    }
+
+    const currentVarNames = new Set();
+
+    vars.slice(0, 15).forEach((v) => {
+      currentVarNames.add(v.name);
+      const valStr = this._formatValue(v.value);
+      const currentValJson = JSON.stringify(v.value);
+      const prevVal = lastValues.get(v.name);
+
+      let row = varRowMap.get(v.name);
+      if (!row) {
+        row = document.createElement('div');
+        row.className = 'scope-var';
+        const closureBadge = isClosure ? '<span class="scope-closure-badge">closed</span>' : '';
+        row.innerHTML = `
+          <span class="scope-var-name">${this._escapeHtml(v.name)}</span>
+          ${closureBadge}
+          <span class="scope-var-value val-target">${valStr}</span>
+        `;
+        varsContainer.appendChild(row);
+        varRowMap.set(v.name, row);
+        lastValues.set(v.name, currentValJson);
+      } else {
+        if (prevVal !== currentValJson) {
+          const valTarget = row.querySelector('.val-target');
+          if (valTarget) {
+            valTarget.innerHTML = valStr;
+            valTarget.classList.remove('val-flash');
+            void valTarget.offsetWidth;
+            valTarget.classList.add('val-flash');
+          }
+          lastValues.set(v.name, currentValJson);
+        }
+      }
+    });
+
+    for (const [varName, row] of varRowMap.entries()) {
+      if (!currentVarNames.has(varName)) {
+        row.remove();
+        varRowMap.delete(varName);
+        lastValues.delete(varName);
+      }
+    }
+  }
+
+  _formatValue(val) {
     if (val === null) return '<span class="val-null">null</span>';
     if (val === undefined) return '<span class="val-undefined">undefined</span>';
     if (typeof val === 'number') return `<span class="val-number">${val}</span>`;
     if (typeof val === 'boolean') return `<span class="val-boolean">${val}</span>`;
     if (typeof val === 'string') {
-      const s = val.length > 16 ? val.slice(0, 16) + '…' : val;
-      return `<span class="val-string">"${this._esc(s)}"</span>`;
+      const short = val.length > 20 ? val.slice(0, 20) + '…' : val;
+      return `<span class="val-string">"${this._escapeHtml(short)}"</span>`;
     }
-    if (val && val.__isFn) return `<span class="val-function">ƒ ${val.name || '?'}</span>`;
-    if (typeof val === 'function') return `<span class="val-function">ƒ</span>`;
-    if (Array.isArray(val)) return `<span class="val-array">[${val.length}]</span>`;
+    if (val && val.__isFn) return `<span class="val-function">ƒ ${val.name || 'anonymous'}</span>`;
+    if (typeof val === 'function') return `<span class="val-function">ƒ native</span>`;
+    if (Array.isArray(val)) return `<span class="val-array">[${val.length} items]</span>`;
     if (typeof val === 'object') return `<span class="val-object">{…}</span>`;
     return String(val);
   }
 
-  _esc(str) {
-    const d = document.createElement('div');
-    d.textContent = String(str ?? '');
-    return d.innerHTML;
+  _escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = String(str);
+    return div.innerHTML;
   }
 }
