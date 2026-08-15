@@ -16,7 +16,12 @@ import { EventLoopPanel } from './components/EventLoopPanel.js';
 import { ConsolePanel } from './components/ConsolePanel.js';
 import { Controls } from './components/Controls.js';
 import { Interpreter } from './interpreter/Interpreter.js';
+import { ExecutionBubble3D } from './components/ExecutionBubble3D.js';
+import { FloatingBubbles3D } from './components/FloatingBubbles3D.js';
 import './utils/ValueInspector.js';
+import { InfoPopup } from './utils/InfoPopup.js';
+import { ShortcutsModal } from './utils/ShortcutsModal.js';
+import { PRESETS } from './utils/presets.js';
 
 // ─── THEME MANAGEMENT ───────────────────────────────────────────
 const THEME_KEY = 'js_vis_theme';
@@ -38,6 +43,14 @@ btnThemeToggle.addEventListener('click', () => {
   updateThemeUI();
 });
 
+// ─── KEYBOARD SHORTCUTS MODAL ───────────────────────────────────
+const shortcutsModal = new ShortcutsModal();
+const btnShortcuts = document.getElementById('btn-shortcuts');
+if (btnShortcuts) {
+  btnShortcuts.innerHTML = icons.keyboard(16);
+  btnShortcuts.addEventListener('click', () => shortcutsModal.toggle());
+}
+
 // ─── POPULATE STATIC SVG ICONS ───────────────────────────────────
 document.getElementById('logo-icon').innerHTML = icons.lightning(22);
 document.getElementById('icon-editor').innerHTML = icons.code(16);
@@ -57,6 +70,7 @@ const btnRunText = document.getElementById('btn-run-text');
 const stepDescEl = document.getElementById('step-description');
 const controlsBar = document.getElementById('controls-bar');
 const btnClearConsole = document.getElementById('btn-clear-console');
+const presetSelector = document.getElementById('preset-selector');
 
 // Panel bodies
 const callstackBody = document.getElementById('callstack-body');
@@ -74,7 +88,17 @@ const consoleBody = document.getElementById('console-body');
 
 // ─── COMPONENTS ─────────────────────────────────────────────────
 const editor = new Editor(editorMount, currentTheme);
-const callStackPanel = new CallStackPanel(callstackBody, callstackCount);
+const callStackPanel = new CallStackPanel(callstackBody, callstackCount, {
+  onFrameSelect: (frame) => {
+    if (frame && frame.line) {
+      editor.highlightLine(frame.line);
+      stepDescEl.innerHTML = `
+        <span class="step-3d-tag">Stack Frame</span>
+        <span class="step-3d-text">Inspecting: <strong>${frame.name}</strong> (line ${frame.line})</span>
+      `;
+    }
+  }
+});
 const execCtxPanel = new ExecutionContextPanel(execctxBody, execctxCount);
 const memoryPanel = new MemoryPanel(memoryStack, memoryHeap, memoryArrows);
 const scopePanel = new ScopeChainPanel(scopeBody);
@@ -83,6 +107,25 @@ const consolePanel = new ConsolePanel(consoleBody);
 
 // Initialize theme button icon
 updateThemeUI();
+
+// ─── POPULATE PRESETS DROPDOWN ──────────────────────────────────
+if (presetSelector) {
+  PRESETS.forEach(preset => {
+    const opt = document.createElement('option');
+    opt.value = preset.id;
+    opt.textContent = `${preset.title} (${preset.category})`;
+    presetSelector.appendChild(opt);
+  });
+
+  presetSelector.addEventListener('change', (e) => {
+    const selectedId = e.target.value;
+    const preset = PRESETS.find(p => p.id === selectedId);
+    if (preset) {
+      editor.setCode(preset.code.trim());
+      runCode();
+    }
+  });
+}
 
 // ─── RESIZABLE SPLITTERS ─────────────────────────────────────────
 function triggerRedrawMemory() {
@@ -167,14 +210,25 @@ let isPlaying = false;
 let playTimer = null;
 let speed = 1; // multiplier
 
+// ─── 3D EXECUTION BUBBLE & AMBIENT BUBBLES ──────────────────────
+const bubbleMount = document.getElementById('header-bubble-mount');
+const bubble3D = bubbleMount ? new ExecutionBubble3D(bubbleMount) : null;
+const floatingBubbles = new FloatingBubbles3D();
+
 // ─── CONTROLS ───────────────────────────────────────────────────
 const controls = new Controls(controlsBar, {
-  onStepBack: () => goToStep(currentStep - 1),
-  onStepForward: () => goToStep(currentStep + 1),
+  onStepBack: () => {
+    if (currentStep > 0) goToStep(currentStep - 1);
+  },
+  onStepForward: () => {
+    if (currentStep < steps.length - 1) goToStep(currentStep + 1);
+  },
   onPlay: () => startPlayback(),
   onPause: () => stopPlayback(),
   onReset: () => resetExecution(),
-  onStepEnd: () => goToStep(steps.length - 1),
+  onStepEnd: () => {
+    if (steps.length > 0) goToStep(steps.length - 1);
+  },
   onSpeedChange: (s) => {
     speed = s;
     if (isPlaying) {
@@ -219,21 +273,59 @@ function goToStep(index) {
   eventLoopPanel.update(snapshot);
   consolePanel.update(snapshot);
 
-  // Update editor highlight (line, block, and expression)
+  // Update 3D Bubble
+  if (bubble3D) {
+    bubble3D.update(snapshot, steps.length);
+  }
+
+  // Update editor highlight (line, block, expression, AND floating 3D line execution bubble!)
   if (snapshot.node) {
-    editor.highlightNode(snapshot.node);
+    editor.highlightNode(snapshot.node, snapshot.description, snapshot.step + 1);
   } else if (snapshot.callStack && snapshot.callStack.length > 0) {
     const topFrame = snapshot.callStack[snapshot.callStack.length - 1];
-    editor.highlightLine(topFrame.line);
+    editor.highlightLine(topFrame.line, snapshot.description, snapshot.step + 1);
   } else {
     editor.clearHighlight();
   }
 
-  // Step description
-  stepDescEl.textContent = snapshot.description || '';
+  // Highlight whichever panel is currently executing
+  highlightActivePanel(snapshot);
+
+  // Step description with 3D status badge
+  stepDescEl.innerHTML = `
+    <span class="step-3d-tag">Step ${snapshot.step + 1}</span>
+    <span class="step-3d-text">${snapshot.description || ''}</span>
+  `;
 
   // Controls state
   controls.updateState(currentStep, steps.length, isPlaying);
+}
+
+function highlightActivePanel(snapshot) {
+  const panelIds = ['callstack-panel', 'execctx-panel', 'memory-panel', 'scope-panel', 'eventloop-panel', 'console-section'];
+  panelIds.forEach(id => document.getElementById(id)?.classList.remove('panel-active-executing'));
+
+  if (!snapshot || !snapshot.description) return;
+  const desc = snapshot.description.toLowerCase();
+
+  let targetId = null;
+  if (desc.includes('call') || desc.includes('return') || desc.includes('stack')) {
+    targetId = 'callstack-panel';
+  } else if (desc.includes('context') || desc.includes('creation') || desc.includes('gec') || desc.includes('fec')) {
+    targetId = 'execctx-panel';
+  } else if (desc.includes('object') || desc.includes('array') || desc.includes('heap') || desc.includes('alloc') || desc.includes('let ') || desc.includes('const ') || desc.includes('var ')) {
+    targetId = 'memory-panel';
+  } else if (desc.includes('scope') || desc.includes('closure') || desc.includes('lookup')) {
+    targetId = 'scope-panel';
+  } else if (desc.includes('timer') || desc.includes('timeout') || desc.includes('interval') || desc.includes('promise') || desc.includes('microtask') || desc.includes('queue')) {
+    targetId = 'eventloop-panel';
+  } else if (desc.includes('console') || desc.includes('log') || desc.includes('table') || desc.includes('warn') || desc.includes('error')) {
+    targetId = 'console-section';
+  }
+
+  if (targetId) {
+    document.getElementById(targetId)?.classList.add('panel-active-executing');
+  }
 }
 
 // ─── PLAYBACK ENGINE ────────────────────────────────────
@@ -269,6 +361,8 @@ function resetExecution() {
   currentStep = -1;
   editor.clearHighlight();
   stepDescEl.textContent = '';
+  if (bubble3D) bubble3D.update(null);
+  highlightActivePanel(null);
 
   // Clear all panels with SVG icons
   callstackBody.innerHTML = `<div class="empty-state"><div class="empty-state-icon">${icons.stack(28)}</div><div>Call stack is empty</div></div>`;
@@ -294,7 +388,8 @@ btnClearConsole.addEventListener('click', () => {
   consolePanel.clear();
 });
 
-// Ctrl+Enter to run
+// Global Keyboard Shortcut: Ctrl+Enter to run code
+// (All other shortcuts are handled by Controls.js)
 document.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
     e.preventDefault();
@@ -312,4 +407,7 @@ window.addEventListener('resize', () => {
 });
 
 // ─── INITIAL STATE ──────────────────────────────────────────────
+const infoPopup = new InfoPopup();
+infoPopup.attachToHeaders();
+
 console.log('%c⚡ JS Execution Visualizer loaded', 'color: #f59e0b; font-weight: bold; font-size: 14px');

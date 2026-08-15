@@ -21,8 +21,10 @@
         </div>
         <span class="header-badge">Sandbox Mode</span>
       </div>
+      <div id="header-bubble-mount" class="header-center"></div>
       <div class="header-right">
         <div id="controls-bar"></div>
+        <button id="btn-shortcuts" class="control-btn shortcuts-toggle-btn" title="Keyboard Shortcuts (?)"></button>
         <button id="btn-theme-toggle" class="control-btn theme-toggle-btn" title="Toggle Light / Dark Theme"></button>
       </div>
     </header>
@@ -37,6 +39,11 @@
             <span>Code Editor</span>
           </div>
           <div class="panel-actions">
+            <div class="preset-wrapper">
+              <select id="preset-selector" class="preset-select" title="Load a JavaScript learning scenario / preset">
+                <option value="" disabled selected>⚡ Examples & Presets...</option>
+              </select>
+            </div>
             <button id="btn-run" class="btn btn-primary" title="Run Code (Ctrl+Enter)">
               <span class="btn-icon" id="icon-run"></span>
               <span id="btn-run-text">Run</span>

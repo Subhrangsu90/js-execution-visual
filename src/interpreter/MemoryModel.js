@@ -162,6 +162,8 @@ export class MemoryModel {
           scopeId: env.id,
           kind: entry.kind,
           ...desc,
+          isRef: !!desc.heapId,
+          refTarget: desc.heapId || null,
         });
       }
     }

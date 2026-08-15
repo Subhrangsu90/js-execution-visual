@@ -5,18 +5,23 @@
 import { icons } from '../utils/icons.js';
 
 export class CallStackPanel {
-  constructor(bodyEl, counterEl) {
+  constructor(bodyEl, counterEl, options = {}) {
     this.body = bodyEl;
     this.counter = counterEl;
+    this.onFrameSelect = options.onFrameSelect || null;
     this._frameElements = []; // Array of frame elements from bottom (0) to top
+    this._selectedFrameIndex = -1;
+    this._currentFrames = [];
   }
 
   update(snapshot) {
     const frames = snapshot.callStack || [];
+    this._currentFrames = frames;
     this.counter.textContent = `${frames.length} frame${frames.length !== 1 ? 's' : ''}`;
 
     if (frames.length === 0) {
       this._frameElements = [];
+      this._selectedFrameIndex = -1;
       this.body.innerHTML = `
         <div class="empty-state">
           <div class="empty-state-icon">${icons.stack(28)}</div>
@@ -68,9 +73,11 @@ export class CallStackPanel {
     // 3. Push new frames
     for (let i = this._frameElements.length; i < frames.length; i++) {
       const frame = frames[i];
+      const frameIndex = i;
       const isActive = i === frames.length - 1;
       const el = document.createElement('div');
       el.className = `stack-frame ${isActive ? 'active' : ''} stack-frame-enter`;
+      el.title = `Click to inspect frame ${frame.name} (line ${frame.line})`;
 
       el.innerHTML = `
         <span class="stack-frame-badge ${frame.type === 'global' ? 'badge-global' : 'badge-function'}">
@@ -80,9 +87,29 @@ export class CallStackPanel {
         ${frame.line ? `<span class="stack-frame-location">:${frame.line}</span>` : ''}
       `;
 
+      // Click to inspect stack frame
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._selectFrame(frameIndex);
+      });
+
       // With flex-direction: column-reverse, appending places it on top of stack visually
       this.body.appendChild(el);
       this._frameElements.push(el);
+    }
+  }
+
+  _selectFrame(index) {
+    if (index < 0 || index >= this._frameElements.length) return;
+    this._selectedFrameIndex = index;
+
+    this._frameElements.forEach((el, i) => {
+      el.classList.toggle('stack-frame-selected', i === index);
+    });
+
+    const frame = this._currentFrames[index];
+    if (this.onFrameSelect && frame) {
+      this.onFrameSelect(frame, index, this._currentFrames);
     }
   }
 

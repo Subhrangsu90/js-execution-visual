@@ -131,7 +131,9 @@ js-execution-visual/
     │   ├── Controls.js         # Debugger playback toolbar & shortcuts
     │   ├── Editor.js           # CodeMirror editor wrapper
     │   ├── EventLoopPanel.js   # Web APIs, microtask, and macrotask queues
+    │   ├── ExecutionBubble3D.js # 3D execution status orb & stats
     │   ├── ExecutionContextPanel.js # Context phases & variable environments
+    │   ├── FloatingBubbles3D.js # Ambient 3D floating glass bubbles
     │   ├── MemoryPanel.js      # Stack & Heap memory with SVG pointers
     │   └── ScopeChainPanel.js  # Scope resolution hierarchy
     ├── interpreter/
@@ -142,8 +144,12 @@ js-execution-visual/
     ├── styles/
     │   └── index.css           # Global theme variables & UI styling
     └── utils/
+        ├── InfoPopup.js        # Educational "What is this?" modals
         ├── Resizable.js        # Split-pane drag resizers
-        └── icons.js            # SVG icons library
+        ├── ShortcutsModal.js   # Keyboard shortcuts HUD modal
+        ├── ValueInspector.js   # Interactive value inspection popover
+        ├── icons.js            # SVG icons library
+        └── presets.js          # Curated learning scenario presets
 ```
 
 ---

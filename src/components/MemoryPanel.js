@@ -34,7 +34,7 @@ export class MemoryPanel {
     this._lastHeap = heap || {};
 
     this._renderStack(stack, heap);
-    this._renderHeap(heap);
+    this._renderHeap(heap, stack);
 
     // Draw arrows after a microtask to let layout settle
     requestAnimationFrame(() => this._drawArrows(stack));
@@ -55,7 +55,7 @@ export class MemoryPanel {
         this.stackEl.innerHTML = `
           <div class="memory-section-label">Stack</div>
           <div class="empty-state" style="padding:12px">
-            <div class="empty-state-icon">${icons.memory(20)}</div>
+            <div class="empty-state-icon" style="font-size:18px">${icons.memory(20)}</div>
             <div>No variables</div>
           </div>`;
         this._stackRows.clear();
@@ -85,14 +85,14 @@ export class MemoryPanel {
       const heapDataJson = targetHeapObj ? JSON.stringify(targetHeapObj.properties || targetHeapObj.value || targetHeapObj) : '';
       
       const valStr = isRef
-        ? `<span class="val-reference val-inspectable" data-inspect="${this._escAttr(heapDataJson)}" data-inspect-type="object" data-inspect-title="${this._escapeHtml(entry.name)} (${refTarget})">${entry.value}</span>`
+        ? `<span class="val-reference val-inspectable" data-inspect="${this._escapeHtml(heapDataJson)}" data-type="ref" data-title="Stack Reference: ${entry.name}" title="Click or hover to inspect reference ${entry.value}">${entry.value}</span>`
         : this._formatPrimitive(entry.value, entry.name);
 
       let rowData = this._stackRows.get(entry.name);
 
       if (!rowData) {
         const el = document.createElement('div');
-        el.className = 'mem-stack-entry mem-entry-enter';
+        el.className = 'mem-var-row mem-entry-enter';
         el.dataset.varName = entry.name;
 
         el.innerHTML = `
@@ -156,10 +156,18 @@ export class MemoryPanel {
     }
   }
 
-  _renderHeap(heap) {
+  _renderHeap(heap, stack = []) {
     this._heapCards.clear();
     const heapIds = Object.keys(heap);
     const emptyState = this.heapEl.querySelector('.empty-state');
+
+    // Active stack references to heap
+    const activeRefTargets = new Set();
+    stack.forEach(entry => {
+      if (entry.isRef && entry.refTarget) {
+        activeRefTargets.add(entry.refTarget);
+      }
+    });
 
     if (heapIds.length === 0) {
       if (!emptyState || this._heapMap.size > 0) {
@@ -192,18 +200,21 @@ export class MemoryPanel {
       const typeClass = `type-${obj.type}`;
       const typeLabel = obj.type.toUpperCase();
       const propsJson = JSON.stringify(obj.properties || obj.value || {});
+      const isUnreferenced = !activeRefTargets.has(id);
 
       let heapData = this._heapMap.get(id);
 
       if (!heapData) {
         const el = document.createElement('div');
-        el.className = 'mem-heap-object mem-entry-enter';
+        el.className = `mem-heap-object mem-entry-enter ${isUnreferenced ? 'heap-unreferenced' : ''}`;
         el.dataset.heapId = id;
+        el.title = isUnreferenced ? 'Unreferenced on Heap — Eligible for Garbage Collection (Mark & Sweep)' : `Heap Object ${id}`;
 
         el.innerHTML = `
           <div class="mem-heap-header">
             <span class="mem-heap-type ${typeClass}">${typeLabel}</span>
             <span class="mem-heap-id">${id}</span>
+            ${isUnreferenced ? '<span class="gc-badge" title="No active references on stack">♻️ GC</span>' : ''}
           </div>
           <div class="mem-heap-body">
             ${this._buildHeapPropsHtml(obj)}
@@ -215,7 +226,9 @@ export class MemoryPanel {
         heapData = {
           el,
           bodyEl: el.querySelector('.mem-heap-body'),
+          headerEl: el.querySelector('.mem-heap-header'),
           lastPropsJson: propsJson,
+          isUnreferenced,
         };
 
         this._heapMap.set(id, heapData);
@@ -227,6 +240,24 @@ export class MemoryPanel {
           heapData.el.classList.remove('val-flash');
           void heapData.el.offsetWidth;
           heapData.el.classList.add('val-flash');
+        }
+
+        // Update GC unreferenced status in-place
+        if (heapData.isUnreferenced !== isUnreferenced) {
+          heapData.isUnreferenced = isUnreferenced;
+          heapData.el.classList.toggle('heap-unreferenced', isUnreferenced);
+          heapData.el.title = isUnreferenced ? 'Unreferenced on Heap — Eligible for Garbage Collection (Mark & Sweep)' : `Heap Object ${id}`;
+
+          const existingBadge = heapData.headerEl.querySelector('.gc-badge');
+          if (isUnreferenced && !existingBadge) {
+            const badge = document.createElement('span');
+            badge.className = 'gc-badge';
+            badge.title = 'No active references on stack';
+            badge.textContent = '♻️ GC';
+            heapData.headerEl.appendChild(badge);
+          } else if (!isUnreferenced && existingBadge) {
+            existingBadge.remove();
+          }
         }
       }
 
@@ -259,7 +290,7 @@ export class MemoryPanel {
         }
       }
     } else if (obj.type === 'array') {
-      const items = obj.properties || [];
+      const items = obj.elements || obj.properties || [];
       if (items.length === 0) {
         propsHtml = '<div style="color:var(--text-dim);font-style:italic">— empty array —</div>';
       } else {
@@ -286,7 +317,7 @@ export class MemoryPanel {
         </div>
         <div class="mem-heap-prop">
           <span class="mem-prop-key">closure:</span>
-          <span class="mem-prop-value" style="color:var(--accent-fuchsia)">${obj.scope ? obj.scope.name : 'Global'}</span>
+          <span class="mem-prop-value" style="color:var(--accent-fuchsia)">${this._escapeHtml(obj.closureName || (obj.scope ? obj.scope.name : 'Global'))}</span>
         </div>
       `;
     }
@@ -325,6 +356,16 @@ export class MemoryPanel {
   }
 
   _formatPrimitive(val, varName = '') {
+    if (val && typeof val === 'object' && 'display' in val && 'type' in val && !val.__isFn) {
+      if (val.type === 'null') return '<span class="val-null">null</span>';
+      if (val.type === 'undefined') return '<span class="val-undefined">undefined</span>';
+      if (val.type === 'number') return `<span class="val-number">${this._escapeHtml(val.display)}</span>`;
+      if (val.type === 'boolean') return `<span class="val-boolean">${this._escapeHtml(val.display)}</span>`;
+      if (val.type === 'string') return `<span class="val-string">${this._escapeHtml(val.display)}</span>`;
+      if (val.type === 'function') return `<span class="val-function">${this._escapeHtml(val.display)}</span>`;
+      if (val.type === 'array') return `<span class="val-array">${this._escapeHtml(val.display)}</span>`;
+      if (val.type === 'object') return `<span class="val-object">${this._escapeHtml(val.display)}</span>`;
+    }
     if (val === null) return '<span class="val-null">null</span>';
     if (val === undefined) return '<span class="val-undefined">undefined</span>';
     if (typeof val === 'number') return `<span class="val-number">${val}</span>`;

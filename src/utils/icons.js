@@ -66,6 +66,13 @@ export const icons = {
       <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
     </svg>`,
 
+  bubble: (size = 16) => `
+    <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9"></circle>
+      <path d="M9 9a3 3 0 0 1 6 0"></path>
+      <circle cx="15.5" cy="8.5" r="0.75" fill="currentColor"></circle>
+    </svg>`,
+
   stack: (size = 16) => `
     <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
@@ -110,6 +117,18 @@ export const icons = {
     <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <polyline points="4 17 10 11 4 5"></polyline>
       <line x1="12" y1="19" x2="20" y2="19"></line>
+    </svg>`,
+
+  keyboard: (size = 16) => `
+    <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+      <line x1="6" y1="8" x2="6" y2="8"></line>
+      <line x1="10" y1="8" x2="10" y2="8"></line>
+      <line x1="14" y1="8" x2="14" y2="8"></line>
+      <line x1="18" y1="8" x2="18" y2="8"></line>
+      <line x1="6" y1="12" x2="6" y2="12"></line>
+      <line x1="18" y1="12" x2="18" y2="12"></line>
+      <line x1="10" y1="16" x2="14" y2="16"></line>
     </svg>`,
 
   timer: (size = 14) => `

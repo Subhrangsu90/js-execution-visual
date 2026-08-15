@@ -6,7 +6,39 @@ import { EditorView, basicSetup } from 'codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorState, StateEffect, StateField, Compartment } from '@codemirror/state';
-import { Decoration } from '@codemirror/view';
+import { Decoration, WidgetType } from '@codemirror/view';
+
+/* ── 3D Live Execution Bubble Widget on Code Line ──────────────── */
+class InlineExecutionBubbleWidget extends WidgetType {
+  constructor(text, step) {
+    super();
+    this.text = text;
+    this.step = step;
+  }
+
+  toDOM() {
+    const span = document.createElement('span');
+    span.className = 'cm-3d-exec-bubble';
+    span.innerHTML = `
+      <span class="cm-3d-bubble-orb">
+        <span class="cm-3d-orb-specular"></span>
+        <span class="cm-3d-orb-num">${this.step || '▶'}</span>
+      </span>
+      <span class="cm-3d-bubble-text">${this._escape(this.text || '')}</span>
+    `;
+    return span;
+  }
+
+  _escape(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  eq(other) {
+    return other.text === this.text && other.step === this.step;
+  }
+}
 
 /* ── Custom line & expression highlight decoration ─────────────── */
 const addHighlight = StateEffect.define();
@@ -71,7 +103,7 @@ const darkTheme = [
 const lightTheme = [
   EditorView.theme({
     '&': {
-      backgroundColor: '#ffffff',
+      backgroundColor: '#fbfbfb',
       height: '100%',
     },
     '.cm-content': {
@@ -185,10 +217,12 @@ export class Editor {
   }
 
   /**
-   * Highlight an AST node, block, or expression range.
+   * Highlight an AST node, block, or expression range and display 3D execution bubble.
    * @param {{ line?: number, endLine?: number, start?: number, end?: number, type?: string }} node
+   * @param {string} [description]
+   * @param {number} [step]
    */
-  highlightNode(node) {
+  highlightNode(node, description = '', step = 0) {
     if (!node || (!node.line && typeof node.start !== 'number')) {
       this.clearHighlight();
       return;
@@ -232,6 +266,17 @@ export class Editor {
         }
       }
 
+      // 3. 3D Live Execution Bubble Widget on the line
+      if (description && !isProgram) {
+        const targetLine = doc.line(startLineNum);
+        decos.push(
+          Decoration.widget({
+            widget: new InlineExecutionBubbleWidget(description, step),
+            side: 1,
+          }).range(targetLine.to)
+        );
+      }
+
       // Sort decorations by start offset
       decos.sort((a, b) => a.from - b.from);
 
@@ -253,8 +298,8 @@ export class Editor {
   }
 
   /** Highlight a specific line (1-indexed). */
-  highlightLine(lineNumber) {
-    this.highlightNode({ line: lineNumber, endLine: lineNumber });
+  highlightLine(lineNumber, description = '', step = 0) {
+    this.highlightNode({ line: lineNumber, endLine: lineNumber }, description, step);
   }
 
   /** Clear all line highlights. */
