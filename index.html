@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JS Execution Visualizer — Runtime Debugger</title>
+  <meta name="description" content="Advanced JavaScript execution visualizer with animated call stack, memory heap, execution contexts, scope chains, and event loop visualization." />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23f59e0b'><path d='M13 2L3 14h9l-1 8 10-12h-9l1-8z'/></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="app">
+    <!-- ===== HEADER ===== -->
+    <header id="header">
+      <div class="header-left">
+        <div class="logo">
+          <span class="logo-icon" id="logo-icon"></span>
+          <h1>JS Execution Visualizer</h1>
+        </div>
+        <span class="header-badge">Sandbox Mode</span>
+      </div>
+      <div class="header-right">
+        <div id="controls-bar"></div>
+        <button id="btn-theme-toggle" class="control-btn theme-toggle-btn" title="Toggle Light / Dark Theme"></button>
+      </div>
+    </header>
+
+    <!-- ===== MAIN AREA ===== -->
+    <main id="main-area">
+      <!-- Left: Code Editor -->
+      <section id="editor-section" class="panel glass">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="panel-icon" id="icon-editor"></span>
+            <span>Code Editor</span>
+          </div>
+          <div class="panel-actions">
+            <button id="btn-run" class="btn btn-primary" title="Run Code (Ctrl+Enter)">
+              <span class="btn-icon" id="icon-run"></span>
+              <span id="btn-run-text">Run</span>
+            </button>
+          </div>
+        </div>
+        <div id="editor-mount" class="panel-body"></div>
+        <div id="step-description" class="step-description"></div>
+      </section>
+
+      <!-- Resizer between Editor and Viz -->
+      <div class="resizer-gutter resizer-horizontal" id="gutter-editor-viz"></div>
+
+      <!-- Right: Visualization Section -->
+      <section id="viz-section">
+        <!-- Row 1: Call Stack + Execution Context -->
+        <div class="viz-row" id="viz-row-1">
+          <!-- Call Stack -->
+          <div id="callstack-panel" class="panel glass">
+            <div class="panel-header">
+              <div class="panel-title">
+                <span class="panel-icon icon-stack" id="icon-stack"></span>
+                <span>Call Stack</span>
+              </div>
+              <span class="panel-counter" id="callstack-count">0 frames</span>
+            </div>
+            <div class="panel-body" id="callstack-body"></div>
+          </div>
+
+          <!-- Resizer between Stack and Context -->
+          <div class="resizer-gutter resizer-horizontal" id="gutter-stack-ctx"></div>
+
+          <!-- Execution Context -->
+          <div id="execctx-panel" class="panel glass">
+            <div class="panel-header">
+              <div class="panel-title">
+                <span class="panel-icon icon-ctx" id="icon-ctx"></span>
+                <span>Execution Context</span>
+              </div>
+              <span class="panel-counter" id="execctx-count">0 contexts</span>
+            </div>
+            <div class="panel-body" id="execctx-body"></div>
+          </div>
+        </div>
+
+        <!-- Resizer between Row 1 and Row 2 -->
+        <div class="resizer-gutter resizer-vertical" id="gutter-row1-row2"></div>
+
+        <!-- Row 2: Memory Panel -->
+        <div class="viz-row viz-row-single" id="viz-row-2">
+          <div id="memory-panel" class="panel glass panel-wide">
+            <div class="panel-header">
+              <div class="panel-title">
+                <span class="panel-icon icon-mem" id="icon-mem"></span>
+                <span>Memory</span>
+              </div>
+              <div class="memory-legend" id="memory-legend">
+                <span class="legend-item legend-number">Num</span>
+                <span class="legend-item legend-string">Str</span>
+                <span class="legend-item legend-boolean">Bool</span>
+                <span class="legend-item legend-object">Obj</span>
+                <span class="legend-item legend-array">Arr</span>
+                <span class="legend-item legend-function">Fn</span>
+              </div>
+            </div>
+            <div class="panel-body memory-body" id="memory-body">
+              <div class="memory-stack" id="memory-stack">
+                <div class="memory-section-label">Stack</div>
+              </div>
+              <div class="resizer-gutter resizer-horizontal" id="gutter-stack-heap"></div>
+              <svg class="memory-arrows" id="memory-arrows"></svg>
+              <div class="memory-heap" id="memory-heap">
+                <div class="memory-section-label">Heap</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resizer between Row 2 and Row 3 -->
+        <div class="resizer-gutter resizer-vertical" id="gutter-row2-row3"></div>
+
+        <!-- Row 3: Scope Chain + Event Loop -->
+        <div class="viz-row" id="viz-row-3">
+          <!-- Scope Chain -->
+          <div id="scope-panel" class="panel glass">
+            <div class="panel-header">
+              <div class="panel-title">
+                <span class="panel-icon icon-scope" id="icon-scope"></span>
+                <span>Scope Chain</span>
+              </div>
+            </div>
+            <div class="panel-body" id="scope-body"></div>
+          </div>
+
+          <!-- Resizer between Scope and Event Loop -->
+          <div class="resizer-gutter resizer-horizontal" id="gutter-scope-loop"></div>
+
+          <!-- Event Loop -->
+          <div id="eventloop-panel" class="panel glass">
+            <div class="panel-header">
+              <div class="panel-title">
+                <span class="panel-icon icon-loop" id="icon-loop"></span>
+                <span>Event Loop</span>
+              </div>
+            </div>
+            <div class="panel-body eventloop-body" id="eventloop-body">
+              <div class="el-section" id="el-webapis">
+                <div class="el-section-label" id="label-webapis">Web APIs</div>
+              </div>
+              <div class="el-section" id="el-microtask">
+                <div class="el-section-label" id="label-microtask">Microtask Queue</div>
+              </div>
+              <div class="el-section" id="el-macrotask">
+                <div class="el-section-label" id="label-macrotask">Callback Queue</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Resizer above Console -->
+    <div class="resizer-gutter resizer-vertical" id="gutter-main-console"></div>
+
+    <!-- ===== CONSOLE ===== -->
+    <footer id="console-section" class="panel glass">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="panel-icon icon-console" id="icon-console"></span>
+          <span>Console</span>
+        </div>
+        <button id="btn-clear-console" class="btn btn-ghost btn-sm" title="Clear Console"></button>
+      </div>
+      <div class="panel-body console-body" id="console-body"></div>
+    </footer>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
