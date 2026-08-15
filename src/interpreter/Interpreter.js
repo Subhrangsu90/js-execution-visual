@@ -213,7 +213,6 @@ export class Interpreter {
       },
     };
     consoleObj.__isBuiltin = true;
-    this.memory.track(consoleObj);
     this.globalEnv.define('console', consoleObj, 'const');
 
     // setTimeout

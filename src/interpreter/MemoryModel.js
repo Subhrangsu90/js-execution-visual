@@ -20,8 +20,12 @@ export class MemoryModel {
 
   /** Register an object on the heap. Returns its heap ID. */
   track(obj) {
-    if (obj === null || typeof obj !== 'object' && typeof obj !== 'function') {
+    if (obj === null || (typeof obj !== 'object' && typeof obj !== 'function')) {
       return null; // primitives don't go on the heap
+    }
+    // Filter out runtime builtins (console, Promise shim, native functions)
+    if (obj.__isBuiltin || obj.__isNative) {
+      return null;
     }
     if (this.objectIds.has(obj)) {
       return this.objectIds.get(obj);
@@ -40,7 +44,9 @@ export class MemoryModel {
 
   /** Check if a value is a reference type (object/array/function). */
   isReference(val) {
-    return val !== null && (typeof val === 'object' || typeof val === 'function');
+    if (val === null) return false;
+    if (val && (val.__isBuiltin || val.__isNative)) return false;
+    return typeof val === 'object' || typeof val === 'function';
   }
 
   _typeOf(obj) {
@@ -64,6 +70,10 @@ export class MemoryModel {
       case 'boolean': return { type: 'boolean', value: val, display: String(val) };
       default:
         break;
+    }
+
+    if (val && (val.__isBuiltin || val.__isNative)) {
+      return { type: 'builtin', display: val.__name || val.name || 'native' };
     }
 
     // Reference type
@@ -97,6 +107,7 @@ export class MemoryModel {
         if (oid === id) { actualObj = obj; break; }
       }
       if (!actualObj) continue;
+      if (actualObj.__isBuiltin || actualObj.__isNative) continue;
 
       if (actualObj.__isFn) {
         snapshot[id] = {

@@ -123,7 +123,7 @@ export class ScopeChainPanel {
 
     vars.slice(0, 15).forEach((v) => {
       currentVarNames.add(v.name);
-      const valStr = this._formatValue(v.value);
+      const valStr = this._formatValue(v.value, v.name);
       const currentValJson = JSON.stringify(v.value);
       const prevVal = lastValues.get(v.name);
 
@@ -163,7 +163,7 @@ export class ScopeChainPanel {
     }
   }
 
-  _formatValue(val) {
+  _formatValue(val, varName = '') {
     if (val === null) return '<span class="val-null">null</span>';
     if (val === undefined) return '<span class="val-undefined">undefined</span>';
     if (typeof val === 'number') return `<span class="val-number">${val}</span>`;
@@ -172,11 +172,22 @@ export class ScopeChainPanel {
       const short = val.length > 20 ? val.slice(0, 20) + '…' : val;
       return `<span class="val-string">"${this._escapeHtml(short)}"</span>`;
     }
-    if (val && val.__isFn) return `<span class="val-function">ƒ ${val.name || 'anonymous'}</span>`;
+    if (val && val.__isFn) {
+      const fnTitle = val.name || varName || 'function';
+      return `<span class="val-function val-inspectable" data-inspect="${this._escAttr(JSON.stringify(val))}" data-inspect-type="function" data-inspect-title="${this._escapeHtml(fnTitle)}">ƒ ${val.name || 'anonymous'}()</span>`;
+    }
     if (typeof val === 'function') return `<span class="val-function">ƒ native</span>`;
-    if (Array.isArray(val)) return `<span class="val-array">[${val.length} items]</span>`;
-    if (typeof val === 'object') return `<span class="val-object">{…}</span>`;
+    if (Array.isArray(val)) {
+      return `<span class="val-array val-inspectable" data-inspect="${this._escAttr(JSON.stringify(val))}" data-inspect-type="array" data-inspect-title="${this._escapeHtml(varName || 'Array')}">[Array(${val.length})]</span>`;
+    }
+    if (typeof val === 'object') {
+      return `<span class="val-object val-inspectable" data-inspect="${this._escAttr(JSON.stringify(val))}" data-inspect-type="object" data-inspect-title="${this._escapeHtml(varName || 'Object')}">{…}</span>`;
+    }
     return String(val);
+  }
+
+  _escAttr(str) {
+    return String(str).replace(/"/g, '&quot;');
   }
 
   _escapeHtml(str) {

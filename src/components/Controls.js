@@ -54,14 +54,20 @@ export class Controls {
 
       switch (e.key) {
         case ' ':
+        case 'F8':
           e.preventDefault();
           this._togglePlay();
           break;
         case 'ArrowRight':
+        case 'F10':
+        case 'n':
+        case 'N':
           e.preventDefault();
           this.callbacks.onStepForward?.();
           break;
         case 'ArrowLeft':
+        case 'p':
+        case 'P':
           e.preventDefault();
           this.callbacks.onStepBack?.();
           break;

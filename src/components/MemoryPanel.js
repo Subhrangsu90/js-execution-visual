@@ -31,15 +31,16 @@ export class MemoryPanel {
   update(snapshot) {
     const { stack, heap } = snapshot.memory || { stack: [], heap: {} };
     this._lastStack = stack || [];
+    this._lastHeap = heap || {};
 
-    this._renderStack(stack);
+    this._renderStack(stack, heap);
     this._renderHeap(heap);
 
     // Draw arrows after a microtask to let layout settle
     requestAnimationFrame(() => this._drawArrows(stack));
   }
 
-  _renderStack(entries) {
+  _renderStack(entries, heap = {}) {
     this._refDots.clear();
 
     // Filter out builtins
@@ -80,9 +81,12 @@ export class MemoryPanel {
       currentNames.add(entry.name);
       const isRef = entry.isRef;
       const refTarget = entry.refTarget;
+      const targetHeapObj = isRef && heap ? heap[refTarget] : null;
+      const heapDataJson = targetHeapObj ? JSON.stringify(targetHeapObj.properties || targetHeapObj.value || targetHeapObj) : '';
+      
       const valStr = isRef
-        ? `<span class="val-reference">${entry.value}</span>`
-        : this._formatPrimitive(entry.value);
+        ? `<span class="val-reference val-inspectable" data-inspect="${this._escAttr(heapDataJson)}" data-inspect-type="object" data-inspect-title="${this._escapeHtml(entry.name)} (${refTarget})">${entry.value}</span>`
+        : this._formatPrimitive(entry.value, entry.name);
 
       let rowData = this._stackRows.get(entry.name);
 
@@ -320,7 +324,7 @@ export class MemoryPanel {
     }
   }
 
-  _formatPrimitive(val) {
+  _formatPrimitive(val, varName = '') {
     if (val === null) return '<span class="val-null">null</span>';
     if (val === undefined) return '<span class="val-undefined">undefined</span>';
     if (typeof val === 'number') return `<span class="val-number">${val}</span>`;
@@ -329,11 +333,22 @@ export class MemoryPanel {
       const short = val.length > 16 ? val.slice(0, 16) + '…' : val;
       return `<span class="val-string">"${this._escapeHtml(short)}"</span>`;
     }
-    if (val && val.__isFn) return `<span class="val-function">ƒ ${val.name || 'anonymous'}</span>`;
+    if (val && val.__isFn) {
+      const fnTitle = val.name || varName || 'function';
+      return `<span class="val-function val-inspectable" data-inspect="${this._escAttr(JSON.stringify(val))}" data-inspect-type="function" data-inspect-title="${this._escapeHtml(fnTitle)}">ƒ ${val.name || 'anonymous'}()</span>`;
+    }
     if (typeof val === 'function') return `<span class="val-function">ƒ native</span>`;
-    if (Array.isArray(val)) return `<span class="val-array">[Array(${val.length})]</span>`;
-    if (typeof val === 'object') return `<span class="val-object">{…}</span>`;
+    if (Array.isArray(val)) {
+      return `<span class="val-array val-inspectable" data-inspect="${this._escAttr(JSON.stringify(val))}" data-inspect-type="array" data-inspect-title="${this._escapeHtml(varName || 'Array')}">[Array(${val.length})]</span>`;
+    }
+    if (typeof val === 'object') {
+      return `<span class="val-object val-inspectable" data-inspect="${this._escAttr(JSON.stringify(val))}" data-inspect-type="object" data-inspect-title="${this._escapeHtml(varName || 'Object')}">{…}</span>`;
+    }
     return String(val);
+  }
+
+  _escAttr(str) {
+    return String(str).replace(/"/g, '&quot;');
   }
 
   _escapeHtml(str) {

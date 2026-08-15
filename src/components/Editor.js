@@ -8,23 +8,22 @@ import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorState, StateEffect, StateField, Compartment } from '@codemirror/state';
 import { Decoration } from '@codemirror/view';
 
-/* ── Custom line-highlight decoration ─────────────────────────── */
+/* ── Custom line & expression highlight decoration ─────────────── */
 const addHighlight = StateEffect.define();
 const clearHighlight = StateEffect.define();
 
 const highlightField = StateField.define({
   create: () => Decoration.none,
   update(decos, tr) {
+    let current = decos;
     for (const e of tr.effects) {
-      if (e.is(clearHighlight)) return Decoration.none;
-      if (e.is(addHighlight)) {
-        const { from, to } = e.value;
-        return Decoration.set([
-          Decoration.line({ class: 'cm-active-exec-line' }).range(from),
-        ]);
+      if (e.is(clearHighlight)) {
+        current = Decoration.none;
+      } else if (e.is(addHighlight)) {
+        current = e.value;
       }
     }
-    return decos.map(tr.changes);
+    return current.map(tr.changes);
   },
   provide: f => EditorView.decorations.from(f),
 });
@@ -185,27 +184,77 @@ export class Editor {
     });
   }
 
-  /** Highlight a specific line (1-indexed). */
-  highlightLine(lineNumber) {
-    if (!lineNumber || lineNumber < 1) {
+  /**
+   * Highlight an AST node, block, or expression range.
+   * @param {{ line?: number, endLine?: number, start?: number, end?: number, type?: string }} node
+   */
+  highlightNode(node) {
+    if (!node || (!node.line && typeof node.start !== 'number')) {
       this.clearHighlight();
       return;
     }
+
     try {
-      const line = this.view.state.doc.line(lineNumber);
+      const doc = this.view.state.doc;
+      const totalLines = doc.lines;
+      const startLineNum = Math.max(1, Math.min(totalLines, node.line || 1));
+
+      // Don't highlight entire file if node is 'Program'
+      const isProgram = node.type === 'Program';
+      const endLineNum = isProgram
+        ? startLineNum
+        : Math.max(startLineNum, Math.min(totalLines, node.endLine || startLineNum));
+
+      const decos = [];
+
+      // 1. Line & Block decorations
+      for (let l = startLineNum; l <= endLineNum; l++) {
+        const line = doc.line(l);
+        let lineClass = 'cm-active-exec-line';
+        if (startLineNum === endLineNum) {
+          lineClass += ' cm-exec-single-line';
+        } else if (l === startLineNum) {
+          lineClass += ' cm-exec-block-start';
+        } else if (l === endLineNum) {
+          lineClass += ' cm-exec-block-end';
+        } else {
+          lineClass += ' cm-exec-block-mid';
+        }
+        decos.push(Decoration.line({ class: lineClass }).range(line.from));
+      }
+
+      // 2. Inline token / expression highlight if offsets are within doc bounds
+      if (!isProgram && typeof node.start === 'number' && typeof node.end === 'number') {
+        const from = Math.max(0, Math.min(doc.length, node.start));
+        const to = Math.max(from, Math.min(doc.length, node.end));
+        if (to > from) {
+          decos.push(Decoration.mark({ class: 'cm-active-exec-inline' }).range(from, to));
+        }
+      }
+
+      // Sort decorations by start offset
+      decos.sort((a, b) => a.from - b.from);
+
+      const decoSet = Decoration.set(decos, true);
       this.view.dispatch({
         effects: [
-          clearHighlight.of(null),
-          addHighlight.of({ from: line.from, to: line.to }),
+          addHighlight.of(decoSet),
         ],
       });
-      // Scroll into view
+
+      // Scroll active line into view smoothly
+      const primaryLine = doc.line(startLineNum);
       this.view.dispatch({
-        effects: EditorView.scrollIntoView(line.from, { y: 'center' }),
+        effects: EditorView.scrollIntoView(primaryLine.from, { y: 'center' }),
       });
     } catch (e) {
-      // line number out of range — ignore
+      console.warn('Highlight dispatch error:', e);
     }
+  }
+
+  /** Highlight a specific line (1-indexed). */
+  highlightLine(lineNumber) {
+    this.highlightNode({ line: lineNumber, endLine: lineNumber });
   }
 
   /** Clear all line highlights. */

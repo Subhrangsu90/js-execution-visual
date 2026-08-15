@@ -16,6 +16,7 @@ import { EventLoopPanel } from './components/EventLoopPanel.js';
 import { ConsolePanel } from './components/ConsolePanel.js';
 import { Controls } from './components/Controls.js';
 import { Interpreter } from './interpreter/Interpreter.js';
+import './utils/ValueInspector.js';
 
 // ─── THEME MANAGEMENT ───────────────────────────────────────────
 const THEME_KEY = 'js_vis_theme';
@@ -197,11 +198,8 @@ function runCode() {
 
   if (steps.length === 0) return;
 
-  // Show first step
+  // Show first step in paused state (ready for manual stepping or play)
   goToStep(0);
-
-  // Start auto-play
-  startPlayback();
 
   // Update run button
   document.getElementById('icon-run').innerHTML = icons.reset(14);
@@ -221,9 +219,12 @@ function goToStep(index) {
   eventLoopPanel.update(snapshot);
   consolePanel.update(snapshot);
 
-  // Update editor highlight
-  if (snapshot.node && snapshot.node.line) {
-    editor.highlightLine(snapshot.node.line);
+  // Update editor highlight (line, block, and expression)
+  if (snapshot.node) {
+    editor.highlightNode(snapshot.node);
+  } else if (snapshot.callStack && snapshot.callStack.length > 0) {
+    const topFrame = snapshot.callStack[snapshot.callStack.length - 1];
+    editor.highlightLine(topFrame.line);
   } else {
     editor.clearHighlight();
   }
