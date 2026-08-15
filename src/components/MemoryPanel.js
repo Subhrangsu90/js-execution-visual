@@ -82,10 +82,25 @@ export class MemoryPanel {
       const isRef = entry.isRef;
       const refTarget = entry.refTarget;
       const targetHeapObj = isRef && heap ? heap[refTarget] : null;
-      const heapDataJson = targetHeapObj ? JSON.stringify(targetHeapObj.properties || targetHeapObj.value || targetHeapObj) : '';
-      
+
+      let cleanData = null;
+      if (targetHeapObj) {
+        if (targetHeapObj.type === 'object' && targetHeapObj.properties) {
+          cleanData = {};
+          for (const [k, v] of Object.entries(targetHeapObj.properties)) {
+            cleanData[k] = v.value !== undefined ? v.value : v.display;
+          }
+        } else if (targetHeapObj.type === 'array' && targetHeapObj.elements) {
+          cleanData = targetHeapObj.elements.map(el => el.value !== undefined ? el.value : el.display);
+        } else {
+          cleanData = targetHeapObj.name ? { name: targetHeapObj.name, params: targetHeapObj.params } : targetHeapObj;
+        }
+      }
+      const heapDataJson = cleanData ? JSON.stringify(cleanData) : '';
+      const displayVal = entry.display || (isRef ? '{…}' : String(entry.value));
+
       const valStr = isRef
-        ? `<span class="val-reference val-inspectable" data-inspect="${this._escapeHtml(heapDataJson)}" data-type="ref" data-title="Stack Reference: ${entry.name}" title="Click or hover to inspect reference ${entry.value}">${entry.value}</span>`
+        ? `<span class="val-reference val-inspectable" data-inspect="${this._escAttr(heapDataJson)}" data-inspect-type="${targetHeapObj?.type || 'ref'}" data-inspect-title="Stack Reference: ${entry.name}" title="Click or hover to inspect reference ${entry.name}">${this._escapeHtml(displayVal)}</span>`
         : this._formatPrimitive(entry.value, entry.name);
 
       let rowData = this._stackRows.get(entry.name);
@@ -107,7 +122,7 @@ export class MemoryPanel {
           el,
           valTarget: el.querySelector('.val-target'),
           dotEl: el.querySelector('.mem-ref-dot'),
-          lastVal: JSON.stringify(entry.value),
+          lastVal: JSON.stringify(entry.value) + '|' + entry.display,
           isRef,
           refTarget,
         };
@@ -115,7 +130,7 @@ export class MemoryPanel {
         this._stackRows.set(entry.name, rowData);
       } else {
         // In-place update value without rebuilding
-        const currentValJson = JSON.stringify(entry.value);
+        const currentValJson = JSON.stringify(entry.value) + '|' + entry.display;
         if (rowData.lastVal !== currentValJson || rowData.isRef !== isRef || rowData.refTarget !== refTarget) {
           rowData.valTarget.innerHTML = valStr;
           rowData.valTarget.classList.remove('val-flash');
@@ -389,7 +404,8 @@ export class MemoryPanel {
   }
 
   _escAttr(str) {
-    return String(str).replace(/"/g, '&quot;');
+    if (str == null) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
   }
 
   _escapeHtml(str) {

@@ -17,8 +17,7 @@ import { ConsolePanel } from './components/ConsolePanel.js';
 import { Controls } from './components/Controls.js';
 import { Interpreter } from './interpreter/Interpreter.js';
 import { ExecutionBubble3D } from './components/ExecutionBubble3D.js';
-import { FloatingBubbles3D } from './components/FloatingBubbles3D.js';
-import './utils/ValueInspector.js';
+import { valueInspector } from './utils/ValueInspector.js';
 import { InfoPopup } from './utils/InfoPopup.js';
 import { ShortcutsModal } from './utils/ShortcutsModal.js';
 import { PRESETS } from './utils/presets.js';
@@ -210,10 +209,9 @@ let isPlaying = false;
 let playTimer = null;
 let speed = 1; // multiplier
 
-// ─── 3D EXECUTION BUBBLE & AMBIENT BUBBLES ──────────────────────
+// ─── 3D EXECUTION BUBBLE ──────────────────────────────────────────
 const bubbleMount = document.getElementById('header-bubble-mount');
 const bubble3D = bubbleMount ? new ExecutionBubble3D(bubbleMount) : null;
-const floatingBubbles = new FloatingBubbles3D();
 
 // ─── CONTROLS ───────────────────────────────────────────────────
 const controls = new Controls(controlsBar, {
@@ -246,18 +244,29 @@ function runCode() {
   const code = editor.getCode();
   if (!code.trim()) return;
 
-  // Run interpreter
-  const interpreter = new Interpreter(code);
-  steps = interpreter.run();
+  try {
+    // Run interpreter
+    const interpreter = new Interpreter(code);
+    steps = interpreter.run();
 
-  if (steps.length === 0) return;
+    if (steps.length === 0) return;
 
-  // Show first step in paused state (ready for manual stepping or play)
-  goToStep(0);
+    // Show first step in paused state (ready for manual stepping or play)
+    goToStep(0);
 
-  // Update run button
-  document.getElementById('icon-run').innerHTML = icons.reset(14);
-  btnRunText.textContent = 'Re-run';
+    // Update run button
+    document.getElementById('icon-run').innerHTML = icons.reset(14);
+    btnRunText.textContent = 'Re-run';
+  } catch (err) {
+    console.error('Fatal execution error:', err);
+    stepDescEl.innerHTML = `
+      <span class="step-3d-tag" style="background:var(--accent-rose)">Error</span>
+      <span class="step-3d-text" style="color:var(--accent-rose)">${err.message || String(err)}</span>
+    `;
+    consolePanel.update({
+      console: [{ type: 'error', args: [`Fatal Execution Error: ${err.message || String(err)}`] }],
+    });
+  }
 }
 
 function goToStep(index) {
@@ -299,6 +308,13 @@ function goToStep(index) {
 
   // Controls state
   controls.updateState(currentStep, steps.length, isPlaying);
+
+  // Update step progress bar
+  const progressFill = document.getElementById('step-progress-fill');
+  if (progressFill && steps.length > 0) {
+    const pct = ((currentStep + 1) / steps.length) * 100;
+    progressFill.style.width = `${pct}%`;
+  }
 }
 
 function highlightActivePanel(snapshot) {
@@ -342,7 +358,17 @@ function startPlayback() {
       stopPlayback();
       return;
     }
-    goToStep(currentStep + 1);
+    const nextStep = currentStep + 1;
+    const nextSnapshot = steps[nextStep];
+    // Breakpoint check: pause if the next step's line has a breakpoint
+    if (nextSnapshot && nextSnapshot.node && nextSnapshot.node.line) {
+      if (editor.hasBreakpoint(nextSnapshot.node.line)) {
+        goToStep(nextStep);
+        stopPlayback();
+        return;
+      }
+    }
+    goToStep(nextStep);
   }, interval);
 }
 
@@ -379,6 +405,10 @@ function resetExecution() {
   controls.updateState(-1, 0, false);
   document.getElementById('icon-run').innerHTML = icons.play(14);
   btnRunText.textContent = 'Run';
+
+  // Reset progress bar
+  const progressFill = document.getElementById('step-progress-fill');
+  if (progressFill) progressFill.style.width = '0%';
 }
 
 // ─── EVENT LISTENERS ────────────────────────────────────────────

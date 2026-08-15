@@ -7,5 +7,20 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          codemirror: [
+            'codemirror',
+            '@codemirror/lang-javascript',
+            '@codemirror/theme-one-dark',
+            '@codemirror/state',
+            '@codemirror/view',
+          ],
+          parser: ['acorn'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 800,
   },
 });

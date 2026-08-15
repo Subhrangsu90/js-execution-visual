@@ -250,7 +250,7 @@ body::before {
   background: var(--header-bg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  z-index: 100;
+
   flex-shrink: 0;
   transition: background var(--duration-normal), border-color var(--duration-normal);
 }
@@ -542,6 +542,7 @@ body::before {
 .panel {
   display: flex;
   flex-direction: column;
+  position: relative;
   border-radius: var(--radius-md);
   overflow: hidden;
   min-height: 0;
@@ -803,6 +804,114 @@ body::before {
   background: rgba(217, 119, 6, 0.22) !important;
   border-bottom: 2px solid #d97706 !important;
   box-shadow: 0 0 6px rgba(217, 119, 6, 0.25);
+}
+
+/* ── Breakpoint Gutter ──────────────────────────────────────────── */
+.cm-breakpoint-gutter {
+  width: 16px !important;
+  cursor: pointer;
+}
+
+.cm-breakpoint-gutter .cm-gutterElement {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.15s;
+}
+
+.cm-breakpoint-gutter .cm-gutterElement:hover {
+  opacity: 0.6;
+}
+
+.cm-breakpoint-dot {
+  color: #ef4444;
+  font-size: 11px;
+  line-height: 1;
+  text-shadow: 0 0 6px rgba(239, 68, 68, 0.7), 0 0 12px rgba(239, 68, 68, 0.3);
+  filter: drop-shadow(0 0 2px rgba(239, 68, 68, 0.5));
+  animation: breakpoint-pulse 2s ease-in-out infinite;
+}
+
+@keyframes breakpoint-pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+    text-shadow: 0 0 6px rgba(239, 68, 68, 0.7), 0 0 12px rgba(239, 68, 68, 0.3);
+  }
+
+  50% {
+    opacity: 0.75;
+    text-shadow: 0 0 10px rgba(239, 68, 68, 0.9), 0 0 20px rgba(239, 68, 68, 0.5);
+  }
+}
+
+[data-theme="light"] .cm-breakpoint-dot {
+  color: #dc2626;
+  text-shadow: 0 0 4px rgba(220, 38, 38, 0.5);
+}
+
+/* ── Step Progress Bar ─────────────────────────────────────────── */
+.step-progress-container {
+  width: 100%;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.step-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #f59e0b, #f97316, #ef4444, #ec4899);
+  background-size: 300% 100%;
+  border-radius: 0 2px 2px 0;
+  transition: width 0.2s ease-out;
+  position: relative;
+  animation: progress-gradient 4s linear infinite;
+}
+
+.step-progress-fill::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: -2px;
+  width: 8px;
+  height: 7px;
+  background: #f59e0b;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.7), 0 0 16px rgba(245, 158, 11, 0.3);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.step-progress-fill[style*="width"]:not([style*="width: 0"]):not([style*="width:0"])::after {
+  opacity: 1;
+}
+
+@keyframes progress-gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  100% {
+    background-position: 300% 50%;
+  }
+}
+
+[data-theme="light"] .step-progress-container {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .step-progress-fill {
+  background: linear-gradient(90deg, #0284c7, #0369a1, #7c3aed, #ec4899);
+  background-size: 300% 100%;
+}
+
+[data-theme="light"] .step-progress-fill::after {
+  background: #0284c7;
+  box-shadow: 0 0 8px rgba(2, 132, 199, 0.7), 0 0 16px rgba(2, 132, 199, 0.3);
 }
 
 /* 3D Live Execution Bubble Widget attached to code line */
@@ -2428,6 +2537,13 @@ body::before {
 
 .sphere-bounce {
   animation: sphereClickBounce 0.4s var(--ease-spring);
+}
+
+/* ── Floating 3D Ambient Glass Bubbles Overlay Layer Disabled ─────── */
+.floating-3d-bubbles-layer,
+.ambient-3d-bubble {
+  display: none !important;
+  pointer-events: none !important;
 }
 
 @keyframes sphereStepPulse {

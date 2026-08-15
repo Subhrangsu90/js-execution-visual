@@ -5,8 +5,10 @@
 import { EditorView, basicSetup } from 'codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { oneDark } from '@codemirror/theme-one-dark';
-import { EditorState, StateEffect, StateField, Compartment } from '@codemirror/state';
-import { Decoration, WidgetType } from '@codemirror/view';
+import { EditorState, StateEffect, StateField, Compartment, RangeSet } from '@codemirror/state';
+import { Decoration, WidgetType, gutter, GutterMarker } from '@codemirror/view';
+
+const CODE_STORAGE_KEY = 'js_vis_editor_code';
 
 /* ── 3D Live Execution Bubble Widget on Code Line ──────────────── */
 class InlineExecutionBubbleWidget extends WidgetType {
@@ -58,6 +60,59 @@ const highlightField = StateField.define({
     return current.map(tr.changes);
   },
   provide: f => EditorView.decorations.from(f),
+});
+
+/* ── Breakpoint gutter ────────────────────────────────────────── */
+const toggleBreakpoint = StateEffect.define();
+
+class BreakpointMarker extends GutterMarker {
+  toDOM() {
+    const dot = document.createElement('span');
+    dot.className = 'cm-breakpoint-dot';
+    dot.textContent = '●';
+    return dot;
+  }
+}
+
+const breakpointMarker = new BreakpointMarker();
+
+const breakpointState = StateField.define({
+  create() { return RangeSet.empty; },
+  update(set, tr) {
+    set = set.map(tr.changes);
+    for (const e of tr.effects) {
+      if (e.is(toggleBreakpoint)) {
+        const line = e.value;
+        let exists = false;
+        const cursor = set.iter(line.from);
+        if (cursor.value && cursor.from === line.from) {
+          exists = true;
+        }
+        if (exists) {
+          // Remove breakpoint at this line
+          set = set.update({ filter: (from) => from !== line.from });
+        } else {
+          // Add breakpoint at this line
+          set = set.update({ add: [breakpointMarker.range(line.from)] });
+        }
+      }
+    }
+    return set;
+  },
+});
+
+const breakpointGutter = gutter({
+  class: 'cm-breakpoint-gutter',
+  markers: v => v.state.field(breakpointState),
+  initialSpacer: () => breakpointMarker,
+  domEventHandlers: {
+    mousedown(view, line) {
+      view.dispatch({
+        effects: toggleBreakpoint.of(line),
+      });
+      return true;
+    },
+  },
 });
 
 const themeCompartment = new Compartment();
@@ -175,18 +230,34 @@ export class Editor {
     this.container = container;
     this.view = null;
     this.currentTheme = initialTheme;
+    this._saveTimeout = null;
     this._init();
   }
 
   _init() {
+    // Load saved code from localStorage, fallback to sample
+    const savedCode = localStorage.getItem(CODE_STORAGE_KEY);
+    const initialDoc = savedCode || SAMPLE_CODE;
+
     const state = EditorState.create({
-      doc: SAMPLE_CODE,
+      doc: initialDoc,
       extensions: [
         basicSetup,
         javascript(),
         themeCompartment.of(this.currentTheme === 'light' ? lightTheme : darkTheme),
         highlightField,
+        breakpointState,
+        breakpointGutter,
         EditorView.lineWrapping,
+        // Auto-save to localStorage on code change (debounced)
+        EditorView.updateListener.of((update) => {
+          if (update.docChanged) {
+            clearTimeout(this._saveTimeout);
+            this._saveTimeout = setTimeout(() => {
+              localStorage.setItem(CODE_STORAGE_KEY, update.state.doc.toString());
+            }, 500);
+          }
+        }),
       ],
     });
 
@@ -214,6 +285,25 @@ export class Editor {
     this.view.dispatch({
       changes: { from: 0, to: this.view.state.doc.length, insert: code },
     });
+  }
+
+  /** Get a Set of line numbers (1-indexed) that have breakpoints. */
+  getBreakpoints() {
+    const bps = new Set();
+    const bpSet = this.view.state.field(breakpointState);
+    const doc = this.view.state.doc;
+    const cursor = bpSet.iter();
+    while (cursor.value) {
+      const line = doc.lineAt(cursor.from);
+      bps.add(line.number);
+      cursor.next();
+    }
+    return bps;
+  }
+
+  /** Check if a line (1-indexed) has a breakpoint. */
+  hasBreakpoint(lineNumber) {
+    return this.getBreakpoints().has(lineNumber);
   }
 
   /**
@@ -314,8 +404,8 @@ export class Editor {
     this.view.dispatch({
       effects: StateEffect.reconfigure.of(
         readOnly
-          ? [basicSetup, javascript(), themeCompartment.of(this.currentTheme === 'light' ? lightTheme : darkTheme), highlightField, EditorView.lineWrapping, EditorState.readOnly.of(true)]
-          : [basicSetup, javascript(), themeCompartment.of(this.currentTheme === 'light' ? lightTheme : darkTheme), highlightField, EditorView.lineWrapping]
+          ? [basicSetup, javascript(), themeCompartment.of(this.currentTheme === 'light' ? lightTheme : darkTheme), highlightField, breakpointState, breakpointGutter, EditorView.lineWrapping, EditorState.readOnly.of(true)]
+          : [basicSetup, javascript(), themeCompartment.of(this.currentTheme === 'light' ? lightTheme : darkTheme), highlightField, breakpointState, breakpointGutter, EditorView.lineWrapping]
       ),
     });
   }

@@ -188,6 +188,10 @@ export class ValueInspector {
   _formatItem(val) {
     if (val === null) return '<span class="val-null">null</span>';
     if (val === undefined) return '<span class="val-undefined">undefined</span>';
+    if (typeof val === 'object' && val !== null) {
+      if ('value' in val && val.value !== undefined) return this._formatItem(val.value);
+      if ('display' in val) return this._formatItem(val.display);
+    }
     if (typeof val === 'number') return `<span class="val-number">${val}</span>`;
     if (typeof val === 'boolean') return `<span class="val-boolean">${val}</span>`;
     if (typeof val === 'string') return `<span class="val-string">"${this._esc(val)}"</span>`;

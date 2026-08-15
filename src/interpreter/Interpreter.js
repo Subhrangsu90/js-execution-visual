@@ -31,6 +31,7 @@ export class Interpreter {
     this.currentEnv = null;
     this.error = null;
     this._stepCount = 0;
+    this._currentNode = null;
   }
 
   /** Parse and execute, returning all recorded steps. */
@@ -71,11 +72,11 @@ export class Interpreter {
       this._recordStep(null, 'Program execution complete');
     } catch (err) {
       if (err.message === '__MAX_STEPS__') {
-        this._recordStep(null, `⚠ Execution stopped — exceeded ${MAX_STEPS} steps`);
+        this._recordStep(this._currentNode || null, `⚠ Execution stopped — exceeded ${MAX_STEPS} steps`);
       } else {
         this.error = err.message || String(err);
         this.consoleOutput.push({ type: 'error', args: [this.error] });
-        this._recordStep(null, `Runtime Error: ${this.error}`);
+        this._recordStep(this._currentNode || null, `Runtime Error: ${this.error}`);
       }
     }
 
@@ -285,6 +286,8 @@ export class Interpreter {
         const fn = this._createFunction(node, env);
         env.define(node.id.name, fn, 'var');
         this._recordStep(node, `Hoisted function "${node.id.name}"`, 'creation');
+      } else if (node.type === 'ClassDeclaration') {
+        // Classes are NOT hoisted like functions (TDZ), but we note them
       } else if (node.type === 'VariableDeclaration' && node.kind === 'var') {
         for (const decl of node.declarations) {
           if (decl.id.type === 'Identifier') {
@@ -309,6 +312,7 @@ export class Interpreter {
     this._checkStepLimit();
 
     if (!node) return undefined;
+    this._currentNode = node;
 
     switch (node.type) {
       case 'Program':
@@ -325,6 +329,9 @@ export class Interpreter {
         this._recordStep(node, `Function "${node.id.name}" (already hoisted)`);
         return undefined;
 
+      case 'ClassDeclaration':
+        return this._execClass(node, env);
+
       case 'ReturnStatement': {
         const val = node.argument ? this._execExpr(node.argument, env) : undefined;
         this._recordStep(node, `return ${this._displayValue(val)}`);
@@ -337,8 +344,17 @@ export class Interpreter {
       case 'WhileStatement':
         return this._execWhile(node, env);
 
+      case 'DoWhileStatement':
+        return this._execDoWhile(node, env);
+
       case 'ForStatement':
         return this._execFor(node, env);
+
+      case 'ForInStatement':
+        return this._execForIn(node, env);
+
+      case 'ForOfStatement':
+        return this._execForOf(node, env);
 
       case 'BlockStatement':
         return this._execBlock(node, env);
@@ -371,24 +387,30 @@ export class Interpreter {
 
   _execVarDecl(node, env) {
     for (const decl of node.declarations) {
-      const name = decl.id.type === 'Identifier' ? decl.id.name : '?';
       let value = undefined;
       if (decl.init) {
         value = this._execExpr(decl.init, env);
       }
 
-      if (node.kind === 'var' && env.variables.has(name)) {
-        // Already hoisted, just assign the value
-        env.set(name, value);
+      // Destructuring patterns
+      if (decl.id.type === 'ObjectPattern' || decl.id.type === 'ArrayPattern') {
+        this._destructure(decl.id, value, env, node.kind);
+        this._recordStep(node, `${node.kind} ${this._patternStr(decl.id)} = ${this._displayValue(value)}`);
       } else {
-        env.define(name, value, node.kind);
-      }
+        const name = decl.id.type === 'Identifier' ? decl.id.name : '?';
+        if (node.kind === 'var' && env.variables.has(name)) {
+          // Already hoisted, just assign the value
+          env.set(name, value);
+        } else {
+          env.define(name, value, node.kind);
+        }
 
-      if (this.memory.isReference(value)) {
-        this.memory.track(value);
-      }
+        if (this.memory.isReference(value)) {
+          this.memory.track(value);
+        }
 
-      this._recordStep(node, `${node.kind} ${name} = ${this._displayValue(value)}`);
+        this._recordStep(node, `${node.kind} ${name} = ${this._displayValue(value)}`);
+      }
     }
     return undefined;
   }
@@ -422,6 +444,24 @@ export class Interpreter {
     return undefined;
   }
 
+  _execDoWhile(node, env) {
+    let iteration = 0;
+    while (true) {
+      this._checkStepLimit();
+      iteration++;
+      this._recordStep(node, `do...while — iteration ${iteration}`);
+      const result = this._exec(node.body, env);
+      if (result && result.__signal === 'break') break;
+      if (result && result.__signal === 'return') return result;
+      const test = this._execExpr(node.test, env);
+      if (!test) {
+        this._recordStep(node, `do...while — condition false, exiting loop`);
+        break;
+      }
+    }
+    return undefined;
+  }
+
   _execFor(node, env) {
     const loopEnv = new Environment('for-loop', env, 'block');
     if (node.init) {
@@ -449,6 +489,68 @@ export class Interpreter {
       if (node.update) {
         this._execExpr(node.update, loopEnv);
       }
+    }
+    return undefined;
+  }
+
+  _execForIn(node, env) {
+    const obj = this._execExpr(node.right, env);
+    const keys = obj != null ? Object.keys(obj).filter(k => !k.startsWith('__')) : [];
+    let iteration = 0;
+    for (const key of keys) {
+      this._checkStepLimit();
+      iteration++;
+      const iterationEnv = new Environment('for-in', env, 'block');
+      if (node.left.type === 'VariableDeclaration') {
+        const decl = node.left.declarations[0];
+        if (decl.id.type === 'ObjectPattern' || decl.id.type === 'ArrayPattern') {
+          this._destructure(decl.id, key, iterationEnv, node.left.kind);
+        } else {
+          const varName = decl.id.type === 'Identifier' ? decl.id.name : '?';
+          iterationEnv.define(varName, key, node.left.kind);
+        }
+      } else if (node.left.type === 'ObjectPattern' || node.left.type === 'ArrayPattern') {
+        this._destructure(node.left, key, env, 'let');
+      } else {
+        const varName = node.left.name;
+        env.set(varName, key);
+      }
+      this._recordStep(node, `for...in — "${key}" (iteration ${iteration})`);
+      const result = this._exec(node.body, iterationEnv);
+      if (result && result.__signal === 'break') break;
+      if (result && result.__signal === 'return') return result;
+    }
+    return undefined;
+  }
+
+  _execForOf(node, env) {
+    const iterable = this._execExpr(node.right, env);
+    const items = Array.isArray(iterable) ? iterable
+      : typeof iterable === 'string' ? [...iterable]
+      : [];
+    let iteration = 0;
+    for (const item of items) {
+      this._checkStepLimit();
+      iteration++;
+      const iterationEnv = new Environment('for-of', env, 'block');
+      if (node.left.type === 'VariableDeclaration') {
+        const decl = node.left.declarations[0];
+        if (decl.id.type === 'ObjectPattern' || decl.id.type === 'ArrayPattern') {
+          this._destructure(decl.id, item, iterationEnv, node.left.kind);
+        } else {
+          const varName = decl.id.type === 'Identifier' ? decl.id.name : '?';
+          iterationEnv.define(varName, item, node.left.kind);
+        }
+      } else if (node.left.type === 'ObjectPattern' || node.left.type === 'ArrayPattern') {
+        this._destructure(node.left, item, env, 'let');
+      } else {
+        const varName = node.left.name;
+        env.set(varName, item);
+      }
+      this._recordStep(node, `for...of — ${this._displayValue(item)} (iteration ${iteration})`);
+      const result = this._exec(node.body, iterationEnv);
+      if (result && result.__signal === 'break') break;
+      if (result && result.__signal === 'return') return result;
     }
     return undefined;
   }
@@ -548,6 +650,9 @@ export class Interpreter {
       case 'ArrowFunctionExpression':
       case 'FunctionExpression':
         return this._createFunction(node, env);
+
+      case 'ClassExpression':
+        return this._execClassExpr(node, env);
 
       case 'ConditionalExpression': {
         const test = this._execExpr(node.test, env);
@@ -763,10 +868,8 @@ export class Interpreter {
   _callFunction(fn, args, calleeName, node, callerEnv) {
     const funcEnv = new Environment(fn.name || calleeName, fn.closure, 'function');
 
-    // Bind parameters
-    for (let i = 0; i < fn.params.length; i++) {
-      funcEnv.define(fn.params[i], i < args.length ? args[i] : undefined, 'let');
-    }
+    // Bind parameters (with destructuring support)
+    this._bindParams(fn, args, funcEnv);
 
     // Bind arguments object
     funcEnv.define('arguments', [...args], 'const');
@@ -803,6 +906,47 @@ export class Interpreter {
     this._recordStep(node, `← ${fn.name || calleeName} returned ${this._displayValue(returnValue)}`);
 
     return returnValue;
+  }
+
+  /**
+   * Bind function parameters, with support for destructuring, defaults, and rest.
+   */
+  _bindParams(fn, args, funcEnv) {
+    const paramNodes = fn.paramNodes || [];
+    for (let i = 0; i < paramNodes.length; i++) {
+      const p = paramNodes[i];
+      if (p.type === 'Identifier') {
+        funcEnv.define(p.name, i < args.length ? args[i] : undefined, 'let');
+      } else if (p.type === 'AssignmentPattern') {
+        // Default parameter
+        let val = i < args.length ? args[i] : undefined;
+        if (val === undefined) val = this._execExpr(p.right, funcEnv);
+        const target = p.left;
+        if (target.type === 'Identifier') {
+          funcEnv.define(target.name, val, 'let');
+        } else {
+          this._destructure(target, val, funcEnv, 'let');
+        }
+      } else if (p.type === 'RestElement') {
+        const restArr = args.slice(i);
+        this.memory.track(restArr);
+        funcEnv.define(p.argument.name, restArr, 'let');
+        break;
+      } else if (p.type === 'ObjectPattern' || p.type === 'ArrayPattern') {
+        this._destructure(p, i < args.length ? args[i] : undefined, funcEnv, 'let');
+      } else {
+        // fallback: use the string param name from fn.params
+        funcEnv.define(fn.params[i] || `_arg${i}`, i < args.length ? args[i] : undefined, 'let');
+      }
+    }
+    // If no paramNodes, fall back to string params
+    if (paramNodes.length === 0 && fn.params) {
+      for (let i = 0; i < fn.params.length; i++) {
+        if (typeof fn.params[i] === 'string') {
+          funcEnv.define(fn.params[i], i < args.length ? args[i] : undefined, 'let');
+        }
+      }
+    }
   }
 
   _execArrayMethod(arr, method, args, env, node) {
@@ -934,23 +1078,57 @@ export class Interpreter {
   }
 
   _execNew(node, env) {
-    // Simplified new — just create an object and call the constructor
     const obj = {};
     const constructor = this._execExpr(node.callee, env);
     const args = node.arguments.map(a => this._execExpr(a, env));
 
     if (constructor && constructor.__isFn) {
+      // If class has superClass, copy its methods first
+      if (constructor.__isClass && constructor.superClass) {
+        const superCls = constructor.superClass;
+        if (superCls.methods) {
+          for (const m of superCls.methods) {
+            if (!m.static) {
+              obj[m.name] = this._createFunction(m.node, constructor.closure);
+              obj[m.name].__isMethod = true;
+            }
+          }
+        }
+      }
+
+      // Attach own class methods
+      if (constructor.__isClass && constructor.methods) {
+        for (const m of constructor.methods) {
+          if (!m.static) {
+            obj[m.name] = this._createFunction(m.node, constructor.closure);
+            obj[m.name].__isMethod = true;
+          }
+        }
+      }
+
       const funcEnv = new Environment(constructor.name || 'constructor', constructor.closure, 'function');
       funcEnv.define('this', obj, 'const');
-      for (let i = 0; i < constructor.params.length; i++) {
-        funcEnv.define(constructor.params[i], args[i], 'let');
-      }
+
+      // Bind parameters (with destructuring support)
+      this._bindParams(constructor, args, funcEnv);
+
+      // Push call stack for constructor
+      const line = node.loc ? node.loc.start.line : 0;
+      this.callStack.push({ name: `new ${constructor.name || 'Object'}`, type: 'function', line });
+      const prevEnv = this.currentEnv;
+      this.currentEnv = funcEnv;
+      this._recordStep(node, `→ new ${constructor.name || 'Object'}(${args.map(a => this._displayValue(a)).join(', ')})`);
+
       if (constructor.body.type === 'BlockStatement') {
+        this._hoist(constructor.body.body, funcEnv);
         this._execStatements(constructor.body.body, funcEnv);
       }
+
+      this.callStack.pop();
+      this.currentEnv = prevEnv;
+      this._recordStep(node, `← ${constructor.name || 'Object'} instance created`);
     }
     this.memory.track(obj);
-    this._recordStep(node, `new ${node.callee.name || 'Object'}()`);
     return obj;
   }
 
@@ -963,14 +1141,168 @@ export class Interpreter {
       params: node.params.map(p => {
         if (p.type === 'Identifier') return p.name;
         if (p.type === 'AssignmentPattern') return p.left.name;
+        if (p.type === 'RestElement') return '...' + (p.argument.name || '?');
+        if (p.type === 'ObjectPattern') return '{…}';
+        if (p.type === 'ArrayPattern') return '[…]';
         return '?';
       }),
+      paramNodes: node.params,
       body: node.body,
       closure: env,
       node: node,
     };
     this.memory.track(fn);
     return fn;
+  }
+
+  // ─── DESTRUCTURING ──────────────────────────────────────────────
+
+  _destructure(pattern, value, env, kind) {
+    if (pattern.type === 'ObjectPattern') {
+      for (const prop of pattern.properties) {
+        if (prop.type === 'RestElement') {
+          // const { a, ...rest } = obj
+          const usedKeys = pattern.properties
+            .filter(p => p.type !== 'RestElement')
+            .map(p => p.key.name || p.key.value);
+          const rest = {};
+          if (value && typeof value === 'object') {
+            for (const k of Object.keys(value)) {
+              if (!usedKeys.includes(k) && !k.startsWith('__')) rest[k] = value[k];
+            }
+          }
+          this.memory.track(rest);
+          const restName = prop.argument.name;
+          env.define(restName, rest, kind);
+          continue;
+        }
+        const key = prop.key.type === 'Identifier' ? prop.key.name : prop.key.value;
+        let val = value != null ? value[key] : undefined;
+        // Handle default values
+        if (val === undefined && prop.value && prop.value.type === 'AssignmentPattern') {
+          val = this._execExpr(prop.value.right, env);
+          const target = prop.value.left;
+          if (target.type === 'Identifier') {
+            env.define(target.name, val, kind);
+          } else {
+            this._destructure(target, val, env, kind);
+          }
+          continue;
+        }
+        // Nested destructuring
+        if (prop.value && (prop.value.type === 'ObjectPattern' || prop.value.type === 'ArrayPattern')) {
+          this._destructure(prop.value, val, env, kind);
+        } else {
+          const varName = prop.value ? (prop.value.type === 'Identifier' ? prop.value.name : key) : key;
+          env.define(varName, val, kind);
+          if (this.memory.isReference(val)) this.memory.track(val);
+        }
+      }
+    } else if (pattern.type === 'ArrayPattern') {
+      const arr = Array.isArray(value) ? value : [];
+      for (let i = 0; i < pattern.elements.length; i++) {
+        const el = pattern.elements[i];
+        if (!el) continue;
+        if (el.type === 'RestElement') {
+          const restArr = arr.slice(i);
+          this.memory.track(restArr);
+          env.define(el.argument.name, restArr, kind);
+          break;
+        }
+        let val = i < arr.length ? arr[i] : undefined;
+        if (el.type === 'AssignmentPattern') {
+          if (val === undefined) val = this._execExpr(el.right, env);
+          const target = el.left;
+          if (target.type === 'Identifier') {
+            env.define(target.name, val, kind);
+          } else {
+            this._destructure(target, val, env, kind);
+          }
+        } else if (el.type === 'ObjectPattern' || el.type === 'ArrayPattern') {
+          this._destructure(el, val, env, kind);
+        } else if (el.type === 'Identifier') {
+          env.define(el.name, val, kind);
+          if (this.memory.isReference(val)) this.memory.track(val);
+        }
+      }
+    }
+  }
+
+  _patternStr(pattern) {
+    if (pattern.type === 'ObjectPattern') {
+      const keys = pattern.properties.map(p => {
+        if (p.type === 'RestElement') return `...${p.argument.name}`;
+        return p.key?.name || p.key?.value || '?';
+      });
+      return `{ ${keys.join(', ')} }`;
+    }
+    if (pattern.type === 'ArrayPattern') {
+      const items = pattern.elements.map(el => {
+        if (!el) return ',';
+        if (el.type === 'RestElement') return `...${el.argument.name}`;
+        if (el.type === 'Identifier') return el.name;
+        if (el.type === 'AssignmentPattern') return `${el.left.name} = …`;
+        return '?';
+      });
+      return `[ ${items.join(', ')} ]`;
+    }
+    return '?';
+  }
+
+  // ─── CLASS SUPPORT ──────────────────────────────────────────────
+
+  _execClass(node, env) {
+    const cls = this._buildClass(node, env);
+    env.define(node.id.name, cls, 'let');
+    this.memory.track(cls);
+    this._recordStep(node, `class ${node.id.name} defined`);
+    return undefined;
+  }
+
+  _execClassExpr(node, env) {
+    const cls = this._buildClass(node, env);
+    this.memory.track(cls);
+    this._recordStep(node, `class expression ${node.id?.name || '(anonymous)'} created`);
+    return cls;
+  }
+
+  _buildClass(node, env) {
+    let superClass = null;
+    if (node.superClass) {
+      superClass = this._execExpr(node.superClass, env);
+    }
+
+    // Find constructor and methods
+    let constructorNode = null;
+    const methods = [];
+    for (const item of node.body.body) {
+      if (item.type === 'MethodDefinition') {
+        if (item.kind === 'constructor') {
+          constructorNode = item.value;
+        } else {
+          methods.push({ name: item.key.name || item.key.value, node: item.value, static: item.static });
+        }
+      }
+    }
+
+    // Build the class as an interpreter function
+    const className = node.id?.name || 'AnonymousClass';
+    const cls = {
+      __isFn: true,
+      __isClass: true,
+      name: className,
+      params: constructorNode
+        ? constructorNode.params.map(p => p.type === 'Identifier' ? p.name : '?')
+        : [],
+      paramNodes: constructorNode ? constructorNode.params : [],
+      body: constructorNode ? constructorNode.body : { type: 'BlockStatement', body: [] },
+      closure: env,
+      node: constructorNode || node,
+      superClass,
+      methods,
+    };
+
+    return cls;
   }
 
   // ─── EVENT LOOP DRAINING ──────────────────────────────────────
