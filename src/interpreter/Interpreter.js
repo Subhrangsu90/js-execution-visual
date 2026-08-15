@@ -65,6 +65,11 @@ export class Interpreter {
       // Phase 2: Execute
       this._execStatements(this.ast.body, this.globalEnv);
 
+      // Pop Global frame after main script synchronous execution finishes
+      if (this.callStack.length > 0 && this.callStack[this.callStack.length - 1].type === 'global') {
+        this.callStack.pop();
+      }
+
       // Phase 3: Drain event loop
       this._drainEventLoop();
 
@@ -889,21 +894,23 @@ export class Interpreter {
 
     // Execute body
     let returnValue = undefined;
-    if (fn.body.type === 'BlockStatement') {
-      const result = this._execStatements(fn.body.body, funcEnv);
-      if (result && result.__signal === 'return') {
-        returnValue = result.value;
+    try {
+      if (fn.body.type === 'BlockStatement') {
+        const result = this._execStatements(fn.body.body, funcEnv);
+        if (result && result.__signal === 'return') {
+          returnValue = result.value;
+        }
+      } else {
+        // Arrow function with expression body
+        returnValue = this._execExpr(fn.body, funcEnv);
+        this._recordStep(node, `return ${this._displayValue(returnValue)}`);
       }
-    } else {
-      // Arrow function with expression body
-      returnValue = this._execExpr(fn.body, funcEnv);
-      this._recordStep(node, `return ${this._displayValue(returnValue)}`);
+    } finally {
+      // Pop call stack and restore env
+      this.callStack.pop();
+      this.currentEnv = prevEnv;
+      this._recordStep(node, `← ${fn.name || calleeName} returned ${this._displayValue(returnValue)}`);
     }
-
-    // Pop call stack
-    this.callStack.pop();
-    this.currentEnv = prevEnv;
-    this._recordStep(node, `← ${fn.name || calleeName} returned ${this._displayValue(returnValue)}`);
 
     return returnValue;
   }
