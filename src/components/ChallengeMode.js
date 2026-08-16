@@ -1,9 +1,9 @@
 /**
- * ChallengeMode.js — Interactive JS Engine Quiz & Challenge System
+ * ChallengeMode.js — Dedicated Full Page JavaScript Engine Quiz & Challenge System
  *
- * Allows users to test their understanding of JavaScript execution mechanics:
+ * Provides a full separate page view for JavaScript runtime challenges:
  * Hoisting, Closures, Stack vs Heap, Event Loop priority, etc.
- * Features instant "Verify in Visualizer" execution testing and final submission score summary!
+ * Features question stepper pills, score dashboard, and visualizer engine testing!
  */
 import { icons } from '../utils/icons.js';
 
@@ -139,54 +139,83 @@ export class ChallengeMode {
   }
 
   _initUI() {
-    this.container = document.createElement('div');
-    this.container.id = 'challenge-modal-backdrop';
-    this.container.className = 'modal-backdrop glass-backdrop hidden';
+    this.container = document.getElementById('quiz-page-container');
+    if (!this.container) {
+      this.container = document.createElement('main');
+      this.container.id = 'quiz-page-container';
+      this.container.className = 'quiz-page-container hidden';
+      document.getElementById('app').appendChild(this.container);
+    }
+
     this.container.innerHTML = `
-      <div class="modal-card challenge-modal glass-card">
-        <div class="modal-header">
-          <div class="modal-title-group">
-            <span class="modal-icon text-accent">${icons.target(20)}</span>
-            <h3>JS Engine Quiz & Challenges</h3>
+      <div class="quiz-page-wrapper">
+        <!-- Top Bar -->
+        <div class="quiz-page-topbar">
+          <div class="quiz-topbar-left">
+            <span class="quiz-page-icon text-accent">${icons.target(24)}</span>
+            <div>
+              <h2 class="quiz-page-title">JavaScript Engine Challenges & Quiz</h2>
+              <p class="quiz-page-sub">Test & master JS execution, hoisting, closures, memory, and async event loop mechanics</p>
+            </div>
           </div>
-          <div class="challenge-stats">
+          <div class="quiz-topbar-right">
             <span class="stat-badge streak-badge" title="Current Streak">${icons.sparkles(14)} Streak: <strong id="quiz-streak">0</strong></span>
             <span class="stat-badge score-badge" title="Total Score">${icons.check(14)} Score: <strong id="quiz-score">0</strong></span>
-          </div>
-          <button id="btn-close-challenge" class="modal-close-btn" aria-label="Close Quiz">&times;</button>
-        </div>
-
-        <div id="quiz-active-view" class="modal-body challenge-body">
-          <div class="challenge-progress-bar">
-            <div id="quiz-progress-fill" class="progress-fill" style="width: 20%"></div>
-          </div>
-
-          <div class="challenge-meta">
-            <span id="quiz-category" class="badge category-badge">Category</span>
-            <span id="quiz-question-num" class="quiz-step-num">Question 1 of ${QUIZ_QUESTIONS.length}</span>
-          </div>
-
-          <h4 id="quiz-title" class="quiz-title">Title</h4>
-          <p id="quiz-question" class="quiz-question-text">Question</p>
-
-          <div class="quiz-code-box">
-            <div class="code-box-header"><span>JavaScript Snippet</span></div>
-            <pre><code id="quiz-code-display">code</code></pre>
-          </div>
-
-          <div id="quiz-options-container" class="quiz-options-grid"></div>
-
-          <div id="quiz-feedback-box" class="quiz-feedback-box hidden"></div>
-
-          <div id="quiz-hint-box" class="quiz-hint-box hidden">
-            <span class="hint-title">${icons.lightbulb(14)} Hint:</span>
-            <span id="quiz-hint-text"></span>
+            <button id="btn-back-sandbox" class="btn btn-secondary btn-sm">Back to Playground &rarr;</button>
           </div>
         </div>
 
-        <div id="quiz-summary-view" class="modal-body quiz-summary-body hidden">
+        <!-- Question Stepper Pills Bar -->
+        <div class="quiz-navigation-bar">
+          <div id="quiz-stepper-pills" class="quiz-stepper-pills"></div>
+        </div>
+
+        <!-- Active Question Main Area -->
+        <div id="quiz-active-view" class="quiz-main-grid">
+          <!-- Left Column: Question & Code -->
+          <div class="quiz-left-column glass-panel">
+            <div class="challenge-meta">
+              <span id="quiz-category" class="badge category-badge">Category</span>
+              <span id="quiz-question-num" class="quiz-step-num">Question 1 of ${QUIZ_QUESTIONS.length}</span>
+            </div>
+
+            <h3 id="quiz-title" class="quiz-title">Title</h3>
+            <p id="quiz-question" class="quiz-question-text">Question</p>
+
+            <div class="quiz-code-box">
+              <div class="code-box-header"><span>JavaScript Source Code</span></div>
+              <pre><code id="quiz-code-display">code</code></pre>
+            </div>
+
+            <div id="quiz-hint-box" class="quiz-hint-box hidden">
+              <span class="hint-title">${icons.lightbulb(14)} Hint:</span>
+              <span id="quiz-hint-text"></span>
+            </div>
+          </div>
+
+          <!-- Right Column: Choices & Feedback -->
+          <div class="quiz-right-column glass-panel">
+            <div class="column-header">
+              <h4>Select Your Answer:</h4>
+              <button id="btn-quiz-hint" class="btn btn-secondary btn-xs">${icons.lightbulb(14)} Show Hint</button>
+            </div>
+
+            <div id="quiz-options-container" class="quiz-options-grid"></div>
+
+            <div id="quiz-feedback-box" class="quiz-feedback-box hidden"></div>
+
+            <div class="quiz-action-toolbar">
+              <button id="btn-quiz-verify" class="btn btn-accent verify-btn">
+                ${icons.play(14)} <span>Test Code in Visualizer Engine</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary Dashboard Screen -->
+        <div id="quiz-summary-view" class="quiz-summary-page hidden">
           <div class="summary-card text-center">
-            <div class="summary-icon-badge">${icons.sparkles(36)}</div>
+            <div class="summary-icon-badge">${icons.sparkles(42)}</div>
             <h3 class="summary-title">Quiz Completed!</h3>
             <p class="summary-subtitle">Here is your JavaScript Engine mastery breakdown:</p>
             
@@ -211,30 +240,24 @@ export class ChallengeMode {
           </div>
         </div>
 
-        <div class="modal-footer challenge-footer">
-          <button id="btn-quiz-hint" class="btn btn-secondary hint-btn">
-            ${icons.lightbulb(14)} <span>Show Hint</span>
-          </button>
-          <button id="btn-quiz-verify" class="btn btn-accent verify-btn">
-            ${icons.play(14)} <span>Verify in Visualizer</span>
-          </button>
-          <div class="footer-nav">
-            <button id="btn-quiz-prev" class="btn btn-secondary" disabled>&larr; Prev</button>
-            <button id="btn-quiz-next" class="btn btn-primary">Next &rarr;</button>
+        <!-- Bottom Navigation Bar -->
+        <div class="quiz-bottom-bar">
+          <button id="btn-quiz-prev" class="btn btn-secondary" disabled>&larr; Previous Question</button>
+          <div class="bottom-bar-center">
+            <div class="challenge-progress-bar">
+              <div id="quiz-progress-fill" class="progress-fill" style="width: 20%"></div>
+            </div>
           </div>
+          <button id="btn-quiz-next" class="btn btn-primary">Next Question &rarr;</button>
         </div>
       </div>
     `;
 
-    document.body.appendChild(this.container);
     this._bindEvents();
   }
 
   _bindEvents() {
-    this.container.querySelector('#btn-close-challenge').addEventListener('click', () => this.close());
-    this.container.addEventListener('click', (e) => {
-      if (e.target === this.container) this.close();
-    });
+    this.container.querySelector('#btn-back-sandbox').addEventListener('click', () => this.close());
 
     this.container.querySelector('#btn-quiz-prev').addEventListener('click', () => {
       if (this.isCompleted) {
@@ -274,9 +297,26 @@ export class ChallengeMode {
     });
   }
 
-  open() {
+  open(updateRoute = true) {
     this.isOpen = true;
+
+    // Hide playground layout
+    const mainArea = document.getElementById('main-area');
+    const gutterConsole = document.getElementById('gutter-main-console');
+    const consoleSection = document.getElementById('console-section');
+    if (mainArea) mainArea.classList.add('hidden');
+    if (gutterConsole) gutterConsole.classList.add('hidden');
+    if (consoleSection) consoleSection.classList.add('hidden');
+
+    // Show dedicated Quiz page container
     this.container.classList.remove('hidden');
+
+    if (updateRoute && window.location.hash !== '#quiz') {
+      history.pushState(null, '', '#quiz');
+    }
+    const modeSelector = document.getElementById('mode-selector');
+    if (modeSelector) modeSelector.value = 'quiz';
+
     if (this.isCompleted) {
       this._showSummaryScreen();
     } else {
@@ -284,11 +324,25 @@ export class ChallengeMode {
     }
   }
 
-  close() {
+  close(updateRoute = true) {
     this.isOpen = false;
+
+    // Show playground layout
+    const mainArea = document.getElementById('main-area');
+    const gutterConsole = document.getElementById('gutter-main-console');
+    const consoleSection = document.getElementById('console-section');
+    if (mainArea) mainArea.classList.remove('hidden');
+    if (gutterConsole) gutterConsole.classList.remove('hidden');
+    if (consoleSection) consoleSection.classList.remove('hidden');
+
+    // Hide dedicated Quiz page container
     this.container.classList.add('hidden');
+
     const modeSelector = document.getElementById('mode-selector');
     if (modeSelector) modeSelector.value = 'sandbox';
+    if (updateRoute && window.location.hash === '#quiz') {
+      history.pushState(null, '', window.location.pathname);
+    }
   }
 
   restartQuiz() {
@@ -301,6 +355,37 @@ export class ChallengeMode {
     this.renderCurrentQuestion();
   }
 
+  _renderStepperPills() {
+    const pillsContainer = this.container.querySelector('#quiz-stepper-pills');
+    if (!pillsContainer) return;
+    pillsContainer.innerHTML = '';
+
+    QUIZ_QUESTIONS.forEach((q, idx) => {
+      const btn = document.createElement('button');
+      btn.className = `quiz-step-pill ${idx === this.currentIndex ? 'active' : ''}`;
+      const isAnswered = this.userAnswers[q.id] !== undefined;
+      const isCorrect = isAnswered && this.userAnswers[q.id] === q.correctIndex;
+
+      if (isAnswered) {
+        btn.classList.add(isCorrect ? 'pill-correct' : 'pill-wrong');
+      }
+
+      btn.innerHTML = `
+        <span class="pill-num">${idx + 1}</span>
+        <span class="pill-title">${q.title}</span>
+        ${isAnswered ? `<span class="pill-icon">${isCorrect ? icons.check(12) : '&times;'}</span>` : ''}
+      `;
+
+      btn.addEventListener('click', () => {
+        if (this.isCompleted) this.isCompleted = false;
+        this.currentIndex = idx;
+        this.renderCurrentQuestion();
+      });
+
+      pillsContainer.appendChild(btn);
+    });
+  }
+
   renderCurrentQuestion() {
     const activeView = this.container.querySelector('#quiz-active-view');
     const summaryView = this.container.querySelector('#quiz-summary-view');
@@ -309,8 +394,10 @@ export class ChallengeMode {
 
     activeView.classList.remove('hidden');
     summaryView.classList.add('hidden');
-    hintBtn.classList.remove('hidden');
-    verifyBtn.classList.remove('hidden');
+    if (hintBtn) hintBtn.classList.remove('hidden');
+    if (verifyBtn) verifyBtn.classList.remove('hidden');
+
+    this._renderStepperPills();
 
     const q = QUIZ_QUESTIONS[this.currentIndex];
     const total = QUIZ_QUESTIONS.length;
@@ -332,10 +419,10 @@ export class ChallengeMode {
     prevBtn.disabled = this.currentIndex === 0;
 
     if (this.currentIndex === total - 1) {
-      nextBtn.innerHTML = `Submit & Finish 🎉`;
+      nextBtn.innerHTML = `Submit & Finish Quiz 🎉`;
       nextBtn.className = 'btn btn-accent';
     } else {
-      nextBtn.innerHTML = `Next &rarr;`;
+      nextBtn.innerHTML = `Next Question &rarr;`;
       nextBtn.className = 'btn btn-primary';
     }
 
@@ -417,8 +504,8 @@ export class ChallengeMode {
 
     activeView.classList.add('hidden');
     summaryView.classList.remove('hidden');
-    hintBtn.classList.add('hidden');
-    verifyBtn.classList.add('hidden');
+    if (hintBtn) hintBtn.classList.add('hidden');
+    if (verifyBtn) verifyBtn.classList.add('hidden');
 
     const correctCount = this._getCorrectCount();
     const total = QUIZ_QUESTIONS.length;
@@ -442,7 +529,6 @@ export class ChallengeMode {
     nextBtn.innerHTML = `🔄 Restart Quiz`;
     nextBtn.className = 'btn btn-primary';
 
-    // Replace nextBtn handler temporarily to restart
     const newNextBtn = nextBtn.cloneNode(true);
     nextBtn.parentNode.replaceChild(newNextBtn, nextBtn);
     newNextBtn.addEventListener('click', () => {

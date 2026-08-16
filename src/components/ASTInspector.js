@@ -110,17 +110,25 @@ export class ASTInspector {
     }
   }
 
-  open() {
+  open(updateRoute = true) {
     this.isOpen = true;
     this.container.classList.remove('hidden');
+    if (updateRoute && window.location.hash !== '#ast') {
+      history.pushState(null, '', '#ast');
+    }
+    const modeSelector = document.getElementById('mode-selector');
+    if (modeSelector) modeSelector.value = 'ast';
     this.render();
   }
 
-  close() {
+  close(updateRoute = true) {
     this.isOpen = false;
     this.container.classList.add('hidden');
     const modeSelector = document.getElementById('mode-selector');
     if (modeSelector) modeSelector.value = 'sandbox';
+    if (updateRoute && window.location.hash === '#ast') {
+      history.pushState(null, '', window.location.pathname);
+    }
   }
 
   render() {

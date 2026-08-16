@@ -271,7 +271,7 @@ if (modeSelector) {
   modeSelector.addEventListener('change', (e) => {
     const val = e.target.value;
     if (val === 'quiz') {
-      challengeMode.open();
+      challengeMode.open(true);
     } else if (val === 'ast') {
       const code = editor.getCode();
       if (code.trim()) {
@@ -281,12 +281,43 @@ if (modeSelector) {
           astInspector.setAST(tempInterp.ast);
         }
       }
-      astInspector.open();
+      astInspector.open(true);
     } else if (val === 'tour') {
-      guidedTour.openLessonModal();
+      guidedTour.openLessonModal(true);
+    } else {
+      challengeMode.close(true);
+      astInspector.close(true);
+      guidedTour.endTour(true);
     }
   });
 }
+
+// ─── URL HASH ROUTING (#quiz, #ast, #tour, #sandbox) ─────────────
+function handleHashRoute() {
+  const hash = window.location.hash.replace('#', '').toLowerCase();
+  if (['quiz', 'challenge'].includes(hash)) {
+    challengeMode.open(false);
+  } else if (['ast', 'bytecode'].includes(hash)) {
+    const code = editor.getCode();
+    if (code.trim()) {
+      const tempInterp = new Interpreter(code);
+      tempInterp.run();
+      if (tempInterp.ast) {
+        astInspector.setAST(tempInterp.ast);
+      }
+    }
+    astInspector.open(false);
+  } else if (['tour', 'lesson', 'lessons'].includes(hash)) {
+    guidedTour.openLessonModal(false);
+  } else {
+    challengeMode.close(false);
+    astInspector.close(false);
+    guidedTour.endTour(false);
+  }
+}
+
+window.addEventListener('hashchange', handleHashRoute);
+setTimeout(handleHashRoute, 100);
 
 // ─── RUN ────────────────────────────────────────────────────────
 function runCode() {

@@ -244,15 +244,23 @@ export class GuidedTour {
     this.overlayEl.addEventListener('click', () => this.endTour());
   }
 
-  openLessonModal() {
+  openLessonModal(updateRoute = true) {
     this.modalEl.classList.remove('hidden');
+    if (updateRoute && window.location.hash !== '#tour') {
+      history.pushState(null, '', '#tour');
+    }
+    const modeSelector = document.getElementById('mode-selector');
+    if (modeSelector) modeSelector.value = 'tour';
     this.renderLessonsGrid();
   }
 
-  closeLessonModal() {
+  closeLessonModal(updateRoute = true) {
     this.modalEl.classList.add('hidden');
     const modeSelector = document.getElementById('mode-selector');
     if (modeSelector) modeSelector.value = 'sandbox';
+    if (updateRoute && window.location.hash === '#tour') {
+      history.pushState(null, '', window.location.pathname);
+    }
   }
 
   renderLessonsGrid() {
@@ -408,7 +416,7 @@ export class GuidedTour {
     document.querySelectorAll('.tour-spotlight-active').forEach(el => el.classList.remove('tour-spotlight-active'));
   }
 
-  endTour() {
+  endTour(updateRoute = true) {
     this.isOpen = false;
     this._clearSpotlight();
     this.overlayEl.classList.add('hidden');
@@ -416,5 +424,8 @@ export class GuidedTour {
     this.modalEl.classList.add('hidden');
     const modeSelector = document.getElementById('mode-selector');
     if (modeSelector) modeSelector.value = 'sandbox';
+    if (updateRoute && window.location.hash === '#tour') {
+      history.pushState(null, '', window.location.pathname);
+    }
   }
 }
