@@ -2,4 +2,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://js-execution-visualizer.vercel.app/sitemap.xml
+Sitemap: https://js-execution-visual.vercel.app/sitemap.xml
