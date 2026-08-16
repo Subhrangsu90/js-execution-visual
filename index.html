@@ -32,6 +32,19 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="JS Visualizer" />
   
+  <!-- Inline Anti-FOUC Theme Script -->
+  <script>
+    (function() {
+      try {
+        var t = localStorage.getItem('js_vis_theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+      } catch(e) {}
+    })();
+  </script>
+
+  <!-- Stylesheet (Render Blocking to Prevent FOUC) -->
+  <link rel="stylesheet" href="/src/styles/index.css" />
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
