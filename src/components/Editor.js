@@ -4,7 +4,8 @@
  */
 import { EditorView, basicSetup } from 'codemirror';
 import { javascript } from '@codemirror/lang-javascript';
-import { oneDark } from '@codemirror/theme-one-dark';
+import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
+import { tags as t } from '@lezer/highlight';
 import { EditorState, StateEffect, StateField, Compartment, RangeSet } from '@codemirror/state';
 import { Decoration, WidgetType, gutter, GutterMarker } from '@codemirror/view';
 
@@ -117,78 +118,132 @@ const breakpointGutter = gutter({
 
 const themeCompartment = new Compartment();
 
-/* ── Dark Theme Extension ─────────────────────────────────────── */
+/* ── Monokai Dark Theme & Syntax Highlighting ────────────────── */
+export const monokaiHighlightStyle = HighlightStyle.define([
+  { tag: [t.keyword, t.self, t.null, t.modifier], color: '#f92672', fontWeight: '600' },
+  { tag: [t.operator, t.operatorKeyword, t.controlKeyword], color: '#f92672' },
+  { tag: [t.string, t.special(t.string), t.character], color: '#e6db74' },
+  { tag: [t.number, t.bool], color: '#ae81ff' },
+  { tag: [t.standard(t.name), t.typeName, t.className, t.macroName, t.tagName], color: '#66d9ef', fontStyle: 'italic' },
+  { tag: [t.function(t.variableName), t.function(t.propertyName), t.function(t.name)], color: '#a6e22e' },
+  { tag: [t.definition(t.function(t.variableName))], color: '#a6e22e', fontWeight: 'bold' },
+  { tag: [t.propertyName, t.attributeName], color: '#fd971f' },
+  { tag: [t.definition(t.propertyName)], color: '#fd971f' },
+  { tag: [t.variableName, t.definition(t.variableName), t.name], color: '#f8f8f2' },
+  { tag: [t.comment, t.lineComment, t.blockComment], color: '#75715e', fontStyle: 'italic' },
+  { tag: [t.punctuation, t.separator, t.bracket, t.paren, t.brace, t.derefOperator], color: '#f8f8f2' },
+  { tag: [t.regexp, t.escape], color: '#ae81ff' },
+  { tag: t.meta, color: '#75715e' },
+  { tag: t.invalid, color: '#f92572', backgroundColor: '#56001a' },
+]);
+
+const monokaiDarkEditorTheme = EditorView.theme({
+  '&': {
+    backgroundColor: '#272822',
+    color: '#f8f8f2',
+    height: '100%',
+  },
+  '.cm-content': {
+    fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
+    fontSize: '13.5px',
+    lineHeight: '1.7',
+    caretColor: '#f8f8f0',
+  },
+  '.cm-cursor': {
+    borderLeftColor: '#f8f8f0',
+    borderLeftWidth: '2px',
+  },
+  '.cm-gutters': {
+    backgroundColor: '#1e1f1c',
+    borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+    color: '#75715e',
+  },
+  '.cm-activeLineGutter': {
+    backgroundColor: '#3e3d32',
+    color: '#c0c0c0',
+  },
+  '.cm-activeLine': {
+    backgroundColor: '#3e3d32',
+  },
+  '.cm-selectionBackground': {
+    backgroundColor: '#49483e !important',
+  },
+  '&.cm-focused .cm-selectionBackground': {
+    backgroundColor: '#49483e !important',
+  },
+  '.cm-line': {
+    padding: '0 8px',
+  },
+  '.cm-matchingBracket': {
+    backgroundColor: '#3e3d32',
+    outline: '1px solid #a6e22e',
+    color: '#a6e22e !important',
+  },
+}, { dark: true });
+
 const darkTheme = [
-  oneDark,
-  EditorView.theme({
-    '&': {
-      backgroundColor: '#0a0a0c',
-      height: '100%',
-    },
-    '.cm-content': {
-      fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-      fontSize: '13px',
-      lineHeight: '1.7',
-      caretColor: '#f59e0b',
-    },
-    '.cm-cursor': {
-      borderLeftColor: '#f59e0b',
-    },
-    '.cm-gutters': {
-      backgroundColor: '#070709',
-      borderRight: '1px solid rgba(255, 255, 255, 0.08)',
-      color: '#52525b',
-    },
-    '.cm-activeLineGutter': {
-      backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    },
-    '.cm-activeLine': {
-      backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    },
-    '.cm-selectionBackground': {
-      backgroundColor: 'rgba(255, 255, 255, 0.15) !important',
-    },
-    '.cm-line': {
-      padding: '0 8px',
-    },
-  }, { dark: true })
+  monokaiDarkEditorTheme,
+  syntaxHighlighting(monokaiHighlightStyle),
 ];
 
-/* ── Light Theme Extension ────────────────────────────────────── */
+/* ── Monokai Light Theme & Syntax Highlighting ───────────────── */
+export const monokaiLightHighlightStyle = HighlightStyle.define([
+  { tag: [t.keyword, t.self, t.null, t.modifier], color: '#d3125d', fontWeight: '600' },
+  { tag: [t.operator, t.operatorKeyword, t.controlKeyword], color: '#d3125d' },
+  { tag: [t.string, t.special(t.string), t.character], color: '#796b00' },
+  { tag: [t.number, t.bool], color: '#6c3ec1' },
+  { tag: [t.standard(t.name), t.typeName, t.className, t.macroName], color: '#007b99', fontStyle: 'italic' },
+  { tag: [t.function(t.variableName), t.function(t.propertyName)], color: '#387800' },
+  { tag: [t.definition(t.function(t.variableName))], color: '#387800', fontWeight: 'bold' },
+  { tag: [t.propertyName, t.attributeName], color: '#c35000' },
+  { tag: [t.definition(t.propertyName)], color: '#c35000' },
+  { tag: [t.variableName, t.definition(t.variableName)], color: '#24292e' },
+  { tag: [t.comment, t.lineComment, t.blockComment], color: '#6a737d', fontStyle: 'italic' },
+  { tag: [t.punctuation, t.separator, t.bracket, t.paren, t.brace], color: '#24292e' },
+  { tag: [t.regexp, t.escape], color: '#6c3ec1' },
+]);
+
+const monokaiLightEditorTheme = EditorView.theme({
+  '&': {
+    backgroundColor: '#fafafa',
+    color: '#24292e',
+    height: '100%',
+  },
+  '.cm-content': {
+    fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
+    fontSize: '13.5px',
+    lineHeight: '1.7',
+    caretColor: '#0284c7',
+  },
+  '.cm-cursor': {
+    borderLeftColor: '#0284c7',
+    borderLeftWidth: '2px',
+  },
+  '.cm-gutters': {
+    backgroundColor: '#f0f0f0',
+    borderRight: '1px solid rgba(0, 0, 0, 0.08)',
+    color: '#959da5',
+  },
+  '.cm-activeLineGutter': {
+    backgroundColor: '#e1e4e8',
+  },
+  '.cm-activeLine': {
+    backgroundColor: '#f1f3f5',
+  },
+  '.cm-selectionBackground': {
+    backgroundColor: '#c8e1ff !important',
+  },
+  '&.cm-focused .cm-selectionBackground': {
+    backgroundColor: '#c8e1ff !important',
+  },
+  '.cm-line': {
+    padding: '0 8px',
+  },
+}, { dark: false });
+
 const lightTheme = [
-  EditorView.theme({
-    '&': {
-      backgroundColor: '#fbfbfb',
-      height: '100%',
-    },
-    '.cm-content': {
-      fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-      fontSize: '13px',
-      lineHeight: '1.7',
-      caretColor: '#0284c7',
-      color: '#0f172a',
-    },
-    '.cm-cursor': {
-      borderLeftColor: '#0284c7',
-    },
-    '.cm-gutters': {
-      backgroundColor: '#f8fafc',
-      borderRight: '1px solid rgba(0, 0, 0, 0.08)',
-      color: '#94a3b8',
-    },
-    '.cm-activeLineGutter': {
-      backgroundColor: 'rgba(0, 0, 0, 0.05)',
-    },
-    '.cm-activeLine': {
-      backgroundColor: 'rgba(0, 0, 0, 0.03)',
-    },
-    '.cm-selectionBackground': {
-      backgroundColor: 'rgba(2, 132, 199, 0.15) !important',
-    },
-    '.cm-line': {
-      padding: '0 8px',
-    },
-  }, { dark: false })
+  monokaiLightEditorTheme,
+  syntaxHighlighting(monokaiLightHighlightStyle),
 ];
 
 /* ── Default sample code ──────────────────────────────────────── */

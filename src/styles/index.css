@@ -327,13 +327,13 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: center;
-  filter: drop-shadow(0 0 10px rgba(247, 223, 30, 0.4));
+  /* filter: drop-shadow(0 0 10px rgba(247, 223, 30, 0.4)); */
   transition: transform var(--duration-fast, 0.15s) ease;
 }
 
-.logo-icon:hover {
+/* .logo-icon:hover {
   transform: scale(1.06);
-}
+} */
 
 .logo-text-group {
   display: flex;
