@@ -27,6 +27,7 @@ export class ChallengeMode {
     this.isOpen = false;
     this.container = null;
     this._initUI();
+    this.setupKeyboardNavigation();
   }
 
   _initUI() {
@@ -407,11 +408,13 @@ export class ChallengeMode {
 
     const badgeBox = this.container.querySelector('#summary-badge-box');
     if (correctCount === total) {
-      badgeBox.innerHTML = `<span class="mastery-level-badge level-gold">🏆 JS Engine Master (100% Perfect!)</span>`;
-    } else if (correctCount >= 3) {
-      badgeBox.innerHTML = `<span class="mastery-level-badge level-silver">🚀 Senior Runtime Developer</span>`;
+      badgeBox.innerHTML = `<span class="mastery-level-badge level-gold">🏆 JS Engine Master (100% Perfect Score!)</span>`;
+    } else if (correctCount >= 7) {
+      badgeBox.innerHTML = `<span class="mastery-level-badge level-silver">🚀 Senior Runtime Developer (${Math.round((correctCount/total)*100)}% Mastery)</span>`;
+    } else if (correctCount >= 4) {
+      badgeBox.innerHTML = `<span class="mastery-level-badge level-bronze">⚡ JS Intermediate Developer (${Math.round((correctCount/total)*100)}% Mastery)</span>`;
     } else {
-      badgeBox.innerHTML = `<span class="mastery-level-badge level-bronze">📚 JavaScript Explorer</span>`;
+      badgeBox.innerHTML = `<span class="mastery-level-badge level-bronze">📚 JavaScript Engine Apprentice</span>`;
     }
 
     const prevBtn = this.container.querySelector('#btn-quiz-prev');
@@ -424,6 +427,53 @@ export class ChallengeMode {
     nextBtn.parentNode.replaceChild(newNextBtn, nextBtn);
     newNextBtn.addEventListener('click', () => {
       this.restartQuiz();
+    });
+  }
+
+  restartQuiz() {
+    this.currentIndex = 0;
+    this.score = 0;
+    this.streak = 0;
+    this.maxStreak = 0;
+    this.userAnswers = {};
+    this.isCompleted = false;
+
+    const activeView = this.container.querySelector('#quiz-active-view');
+    const summaryView = this.container.querySelector('#quiz-summary-view');
+    const hintBtn = this.container.querySelector('#btn-quiz-hint');
+    const verifyBtn = this.container.querySelector('#btn-quiz-verify');
+
+    activeView.classList.remove('hidden');
+    summaryView.classList.add('hidden');
+    if (hintBtn) hintBtn.classList.remove('hidden');
+    if (verifyBtn) verifyBtn.classList.remove('hidden');
+
+    this.renderCurrentQuestion();
+  }
+
+  setupKeyboardNavigation() {
+    window.addEventListener('keydown', (e) => {
+      if (!this.isOpen || this.isCompleted) return;
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.closest('.cm-editor')) return;
+
+      const key = e.key.toUpperCase();
+      const q = QUIZ_QUESTIONS[this.currentIndex];
+      const answeredIdx = this.userAnswers[q.id];
+
+      if (answeredIdx === undefined) {
+        if (key === '1' || key === 'A') this.handleAnswerSelect(0);
+        else if (key === '2' || key === 'B') this.handleAnswerSelect(1);
+        else if (key === '3' || key === 'C') this.handleAnswerSelect(2);
+        else if (key === '4' || key === 'D') this.handleAnswerSelect(3);
+      }
+
+      if (e.key === 'ArrowRight' || e.key === 'Enter') {
+        if (answeredIdx !== undefined) {
+          this.nextQuestion();
+        }
+      } else if (e.key === 'ArrowLeft' && this.currentIndex > 0) {
+        this.prevQuestion();
+      }
     });
   }
 }

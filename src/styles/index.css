@@ -305,6 +305,23 @@ body::before {
   transition: background var(--duration-normal), border-color var(--duration-normal);
 }
 
+@media (max-width: 768px) {
+  #header {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 8px 12px;
+  }
+
+  .header-left, .header-right {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .logo-subtitle {
+    display: none;
+  }
+}
+
 .header-left {
   display: flex;
   align-items: center;
@@ -4092,8 +4109,75 @@ kbd {
   color: #ffffff;
 }
 
+/* ===================================================================
+   RESPONSIVE BREAKPOINTS FOR QUIZ & CHALLENGE MODE
+   =================================================================== */
 @media (max-width: 900px) {
+  .quiz-page-container {
+    padding: 12px 12px;
+  }
+
   .quiz-main-grid {
     grid-template-columns: 1fr;
+    overflow-y: visible;
+  }
+
+  .quiz-left-column,
+  .quiz-right-column {
+    overflow-y: visible;
+  }
+}
+
+@media (max-width: 640px) {
+  .quiz-page-topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .quiz-topbar-right {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .quiz-page-title {
+    font-size: 16px;
+  }
+
+  .quiz-page-sub {
+    font-size: 11px;
+  }
+
+  .quiz-code-box pre {
+    font-size: 12px;
+    padding: 10px;
+  }
+
+  .quiz-options-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quiz-navigation-bar {
+    padding: 6px 8px;
+  }
+
+  .quiz-step-pill {
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .quiz-topbar-right {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  #btn-back-sandbox {
+    width: 100%;
+    text-align: center;
   }
 }
