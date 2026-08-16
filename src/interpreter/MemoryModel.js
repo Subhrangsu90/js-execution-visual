@@ -91,6 +91,21 @@ export class MemoryModel {
     if (Array.isArray(val)) {
       return { type: 'array', heapId: id, display: `Array(${val.length})` };
     }
+    if (val instanceof Map) {
+      return { type: 'map', heapId: id, display: `Map(${val.size})` };
+    }
+    if (val instanceof Set) {
+      return { type: 'set', heapId: id, display: `Set(${val.size})` };
+    }
+    if (val instanceof Date) {
+      return { type: 'date', heapId: id, display: `Date(${val.toISOString()})` };
+    }
+    if (val instanceof RegExp) {
+      return { type: 'regexp', heapId: id, display: String(val) };
+    }
+    if (val instanceof Error) {
+      return { type: 'error', heapId: id, display: `${val.name}: ${val.message}` };
+    }
     return { type: 'object', heapId: id, display: `{…}` };
   }
 
@@ -135,6 +150,15 @@ export class MemoryModel {
             ...this.describeValue(el),
           })),
         };
+      } else if (actualObj instanceof Map) {
+        const properties = {};
+        for (const [k, v] of actualObj.entries()) {
+          properties[String(k)] = this.describeValue(v);
+        }
+        snapshot[id] = { id, type: 'map', properties };
+      } else if (actualObj instanceof Set) {
+        const elements = Array.from(actualObj.values()).map(el => this.describeValue(el));
+        snapshot[id] = { id, type: 'set', elements };
       } else {
         const properties = {};
         for (const key of Object.keys(actualObj)) {

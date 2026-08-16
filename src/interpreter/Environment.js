@@ -37,6 +37,9 @@ export class Environment {
       return this.variables.get(name).value;
     }
     if (this.parent) return this.parent.get(name);
+    if (typeof globalThis !== 'undefined' && name in globalThis) {
+      return globalThis[name];
+    }
     return undefined; // behaves like `undefined` for undeclared identifiers
   }
 
@@ -44,6 +47,7 @@ export class Environment {
   has(name) {
     if (this.variables.has(name)) return true;
     if (this.parent) return this.parent.has(name);
+    if (typeof globalThis !== 'undefined' && name in globalThis) return true;
     return false;
   }
 

@@ -305,6 +305,26 @@ export class Interpreter {
     const jsonObj = { parse: JSON.parse, stringify: JSON.stringify };
     jsonObj.__isBuiltin = true;
     this.globalEnv.define('JSON', jsonObj, 'const');
+
+    // structuredClone
+    if (typeof globalThis.structuredClone === 'function') {
+      this.globalEnv.define('structuredClone', globalThis.structuredClone, 'const');
+    } else {
+      this.globalEnv.define('structuredClone', (val) => JSON.parse(JSON.stringify(val)), 'const');
+    }
+
+    // Native Constructors & Built-in Functions
+    const nativeGlobals = [
+      'Map', 'Set', 'WeakMap', 'WeakSet', 'Symbol', 'BigInt',
+      'Date', 'RegExp', 'Error', 'TypeError', 'RangeError', 'SyntaxError',
+      'encodeURIComponent', 'decodeURIComponent', 'encodeURI', 'decodeURI',
+      'atob', 'btoa', 'URL', 'URLSearchParams'
+    ];
+    for (const name of nativeGlobals) {
+      if (typeof globalThis[name] !== 'undefined') {
+        this.globalEnv.define(name, globalThis[name], 'const');
+      }
+    }
   }
 
   // ─── HOISTING ─────────────────────────────────────────────────
@@ -1109,10 +1129,19 @@ export class Interpreter {
   }
 
   _execNew(node, env) {
-    const obj = {};
     const constructor = this._execExpr(node.callee, env);
     const args = node.arguments.map(a => this._execExpr(a, env));
 
+    // Handle native constructors (Map, Set, Date, RegExp, Error, etc.)
+    if (typeof constructor === 'function' && !constructor.__isFn) {
+      const instance = new constructor(...args);
+      this.memory.track(instance);
+      const name = constructor.name || 'Object';
+      this._recordStep(node, `new ${name}(${args.map(a => this._displayValue(a)).join(', ')})`);
+      return instance;
+    }
+
+    const obj = {};
     if (constructor && constructor.__isFn) {
       // If class has superClass, copy its methods first
       if (constructor.__isClass && constructor.superClass) {

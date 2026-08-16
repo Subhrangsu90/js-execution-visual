@@ -85,16 +85,7 @@ export class MemoryPanel {
 
       let cleanData = null;
       if (targetHeapObj) {
-        if (targetHeapObj.type === 'object' && targetHeapObj.properties) {
-          cleanData = {};
-          for (const [k, v] of Object.entries(targetHeapObj.properties)) {
-            cleanData[k] = v.value !== undefined ? v.value : v.display;
-          }
-        } else if (targetHeapObj.type === 'array' && targetHeapObj.elements) {
-          cleanData = targetHeapObj.elements.map(el => el.value !== undefined ? el.value : el.display);
-        } else {
-          cleanData = targetHeapObj.name ? { name: targetHeapObj.name, params: targetHeapObj.params } : targetHeapObj;
-        }
+        cleanData = this._getHeapObjCleanData(targetHeapObj, heap);
       }
       const heapDataJson = cleanData ? JSON.stringify(cleanData) : '';
       const displayVal = entry.display || (isRef ? '{…}' : String(entry.value));
@@ -344,9 +335,9 @@ export class MemoryPanel {
     const containerRect = this.arrowsSvg.getBoundingClientRect();
     if (containerRect.width === 0 || containerRect.height === 0) return;
 
-    // Scan all ref dots in Stack, Scope Chain, and Execution Context panels
-    const allDots = document.querySelectorAll('.mem-ref-dot[data-ref]');
-    allDots.forEach(dotEl => {
+    // Scan ONLY ref dots in the Stack section (connecting Stack → Heap)
+    const stackDots = this.stackEl.querySelectorAll('.mem-ref-dot[data-ref]');
+    stackDots.forEach(dotEl => {
       const heapId = dotEl.dataset.ref || dotEl.getAttribute('data-ref');
       if (!heapId) return;
 
@@ -378,6 +369,40 @@ export class MemoryPanel {
     });
   }
 
+  _getHeapObjCleanData(obj, heap = this._lastHeap || {}, visited = new Set()) {
+    if (!obj) return null;
+    if (visited.has(obj)) return '[Circular]';
+    visited.add(obj);
+
+    if ((obj.type === 'object' || obj.type === 'map') && obj.properties) {
+      const clean = {};
+      for (const [k, v] of Object.entries(obj.properties)) {
+        if (v && v.heapId && heap && heap[v.heapId]) {
+          clean[k] = this._getHeapObjCleanData(heap[v.heapId], heap, new Set(visited));
+        } else if (v && v.value !== undefined) {
+          clean[k] = v.value;
+        } else if (v && v.display) {
+          clean[k] = v.display;
+        } else {
+          clean[k] = v;
+        }
+      }
+      return clean;
+    }
+
+    if ((obj.type === 'array' || obj.type === 'set') && (obj.elements || obj.properties)) {
+      const items = obj.elements || obj.properties || [];
+      return items.map(el => {
+        if (el && el.heapId && heap && heap[el.heapId]) {
+          return this._getHeapObjCleanData(heap[el.heapId], heap, new Set(visited));
+        }
+        return el.value !== undefined ? el.value : (el.display || el);
+      });
+    }
+
+    return obj.name ? { name: obj.name, params: obj.params } : (obj.properties || obj.value || obj);
+  }
+
   _formatPrimitive(val, varName = '') {
     if (val && typeof val === 'object' && 'display' in val && 'type' in val && !val.__isFn) {
       if (val.type === 'null') return '<span class="val-null">null</span>';
@@ -385,9 +410,21 @@ export class MemoryPanel {
       if (val.type === 'number') return `<span class="val-number">${this._escapeHtml(val.display)}</span>`;
       if (val.type === 'boolean') return `<span class="val-boolean">${this._escapeHtml(val.display)}</span>`;
       if (val.type === 'string') return `<span class="val-string">${this._escapeHtml(val.display)}</span>`;
-      if (val.type === 'function') return `<span class="val-function">${this._escapeHtml(val.display)}</span>`;
-      if (val.type === 'array') return `<span class="val-array">${this._escapeHtml(val.display)}</span>`;
-      if (val.type === 'object') return `<span class="val-object">${this._escapeHtml(val.display)}</span>`;
+
+      const heapId = val.heapId || null;
+      const dotHtml = heapId ? `<span class="mem-ref-dot" data-ref="${heapId}"></span>` : '';
+      let inspectData = null;
+
+      if (heapId && this._lastHeap && this._lastHeap[heapId]) {
+        inspectData = this._getHeapObjCleanData(this._lastHeap[heapId]);
+      } else if (val.value !== undefined) {
+        inspectData = val.value;
+      } else {
+        inspectData = val.display || val;
+      }
+
+      const inspectJson = inspectData ? JSON.stringify(inspectData) : '';
+      return `<span class="val-${val.type} val-inspectable" data-inspect="${this._escAttr(inspectJson)}" data-inspect-type="${val.type}" data-inspect-title="${this._escapeHtml(varName || val.display || 'Inspect Object')}">${this._escapeHtml(val.display)}</span>${dotHtml}`;
     }
     if (val === null) return '<span class="val-null">null</span>';
     if (val === undefined) return '<span class="val-undefined">undefined</span>';

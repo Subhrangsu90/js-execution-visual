@@ -185,26 +185,37 @@ export class ValueInspector {
     return `<div class="inspector-row">${this._formatItem(data)}</div>`;
   }
 
-  _formatItem(val) {
+  _formatItem(val, depth = 0) {
     if (val === null) return '<span class="val-null">null</span>';
     if (val === undefined) return '<span class="val-undefined">undefined</span>';
+
     if (typeof val === 'object' && val !== null) {
-      if ('value' in val && val.value !== undefined) return this._formatItem(val.value);
-      if ('display' in val) return this._formatItem(val.display);
+      if ('value' in val && val.value !== undefined && !('properties' in val || 'elements' in val)) {
+        return this._formatItem(val.value, depth);
+      }
     }
+
     if (typeof val === 'number') return `<span class="val-number">${val}</span>`;
     if (typeof val === 'boolean') return `<span class="val-boolean">${val}</span>`;
     if (typeof val === 'string') return `<span class="val-string">"${this._esc(val)}"</span>`;
     if (val && val.__isFn) return `<span class="val-function">ƒ ${this._esc(val.name || 'anonymous')}()</span>`;
+
     if (Array.isArray(val)) {
-      const summary = val.length <= 3 ? `[${val.map(v => typeof v === 'string' ? `"${v}"` : v).join(', ')}]` : `Array(${val.length})`;
-      return `<span class="val-array">${this._esc(summary)}</span>`;
+      if (depth > 2) return `<span class="val-array">[Array(${val.length})]</span>`;
+      const formattedItems = val.map(item => this._formatItem(item, depth + 1)).join(', ');
+      return `<span class="val-array">[${formattedItems}]</span>`;
     }
-    if (typeof val === 'object') {
-      const keys = Object.keys(val).filter(k => !k.startsWith('__'));
-      const summary = `{${keys.slice(0, 3).join(', ')}${keys.length > 3 ? ', …' : ''}}`;
-      return `<span class="val-object">${this._esc(summary)}</span>`;
+
+    if (typeof val === 'object' && val !== null) {
+      if (depth > 2) return `<span class="val-object">{…}</span>`;
+      const entries = Object.entries(val).filter(([k]) => !k.startsWith('__'));
+      if (entries.length === 0) return '<span class="val-object">{}</span>';
+      const formattedProps = entries
+        .map(([k, v]) => `<span class="inspector-key">${this._esc(k)}:</span> ${this._formatItem(v, depth + 1)}`)
+        .join(', ');
+      return `<span class="val-object">{ ${formattedProps} }</span>`;
     }
+
     return String(val);
   }
 
