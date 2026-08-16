@@ -1,14 +1,16 @@
 {
   "name": "JS Execution Visualizer",
   "short_name": "JS Visualizer",
-  "description": "Interactive runtime debugger and step-by-step JavaScript execution visualizer",
+  "description": "Interactive JavaScript engine visualizer and step-by-step runtime debugger",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#09090b",
   "theme_color": "#09090b",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23f59e0b'><path d='M13 2L3 14h9l-1 8 10-12h-9l1-8z'/></svg>",
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23F7DF1E'/><path d='M19.5 24.5C20.5 24.5 21.8 24 22.3 23.2C22.6 22.7 22.7 22.1 22.7 20.8V14.5H20V20.5C20 21.2 19.8 21.6 19.3 21.6C18.8 21.6 18.5 21.2 18.5 20.5H16C16 22.7 17.3 24.5 19.5 24.5ZM11.6 24.5C13.8 24.5 15.1 23.3 15.1 21.4C15.1 19.7 14.1 18.8 12.3 18.1L11.5 17.8C10.5 17.4 10 17 10 16.3C10 15.6 10.6 15 11.6 15C12.5 15 13.1 15.4 13.4 16.2H15.8C15.5 14.2 14 13 11.6 13C9.4 13 8 14.3 8 16.4C8 18.2 9 19.1 10.7 19.8L11.5 20.1C12.7 20.6 13.1 21 13.1 21.7C13.1 22.5 12.3 23 11.4 23C10.2 23 9.6 22.4 9.3 21.2H6.9C7.2 23.3 8.9 24.5 11.6 24.5Z' fill='%23111111'/></svg>",
       "sizes": "192x192 512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"

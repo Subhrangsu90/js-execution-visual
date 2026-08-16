@@ -3,14 +3,65 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>JS Execution Visualizer — Runtime Debugger</title>
-  <meta name="description" content="Advanced JavaScript execution visualizer with animated call stack, memory heap, execution contexts, scope chains, and event loop visualization." />
+  <title>JS Execution Visualizer — Interactive JavaScript Engine & Memory Debugger</title>
+  <meta name="description" content="Interactive JavaScript execution visualizer and runtime debugger. Step through JS code execution with animated Call Stack, Stack & Heap Memory, Execution Contexts, Scope Chains, Closures, and Event Loop visualization." />
+  <meta name="keywords" content="JavaScript, JS Visualizer, Execution Context, Call Stack, Event Loop, Memory Heap, JS Debugger, Scope Chain, Closures, AST Interpreter, Web APIs, Microtasks, Async JavaScript" />
+  <meta name="author" content="JS Execution Visualizer" />
+  <meta name="robots" content="index, follow" />
   <meta name="theme-color" content="#09090b" />
+  <link rel="canonical" href="https://js-execution-visualizer.vercel.app/" />
+
+  <!-- Open Graph / Social Media Meta Tags -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://js-execution-visualizer.vercel.app/" />
+  <meta property="og:title" content="JS Execution Visualizer — JavaScript Engine Debugger" />
+  <meta property="og:description" content="Visualize JavaScript execution frame by frame. Inspect Call Stack, Memory Heap, Execution Contexts, Scope Chains, and Event Loop in real-time." />
+  <meta property="og:site_name" content="JS Execution Visualizer" />
+  <meta property="og:locale" content="en_US" />
+
+  <!-- Twitter Meta Tags -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="JS Execution Visualizer — JavaScript Engine Debugger" />
+  <meta name="twitter:description" content="Step-by-step visualizer for JavaScript execution, Call Stack, Memory Heap, Closures, and Event Loop." />
+
+  <!-- PWA & Favicon -->
   <link rel="manifest" href="/manifest.json" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23F7DF1E'/><path d='M19.5 24.5C20.5 24.5 21.8 24 22.3 23.2C22.6 22.7 22.7 22.1 22.7 20.8V14.5H20V20.5C20 21.2 19.8 21.6 19.3 21.6C18.8 21.6 18.5 21.2 18.5 20.5H16C16 22.7 17.3 24.5 19.5 24.5ZM11.6 24.5C13.8 24.5 15.1 23.3 15.1 21.4C15.1 19.7 14.1 18.8 12.3 18.1L11.5 17.8C10.5 17.4 10 17 10 16.3C10 15.6 10.6 15 11.6 15C12.5 15 13.1 15.4 13.4 16.2H15.8C15.5 14.2 14 13 11.6 13C9.4 13 8 14.3 8 16.4C8 18.2 9 19.1 10.7 19.8L11.5 20.1C12.7 20.6 13.1 21 13.1 21.7C13.1 22.5 12.3 23 11.4 23C10.2 23 9.6 22.4 9.3 21.2H6.9C7.2 23.3 8.9 24.5 11.6 24.5Z' fill='%23111111'/></svg>" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23F7DF1E'/><path d='M19.5 24.5C20.5 24.5 21.8 24 22.3 23.2C22.6 22.7 22.7 22.1 22.7 20.8V14.5H20V20.5C20 21.2 19.8 21.6 19.3 21.6C18.8 21.6 18.5 21.2 18.5 20.5H16C16 22.7 17.3 24.5 19.5 24.5ZM11.6 24.5C13.8 24.5 15.1 23.3 15.1 21.4C15.1 19.7 14.1 18.8 12.3 18.1L11.5 17.8C10.5 17.4 10 17 10 16.3C10 15.6 10.6 15 11.6 15C12.5 15 13.1 15.4 13.4 16.2H15.8C15.5 14.2 14 13 11.6 13C9.4 13 8 14.3 8 16.4C8 18.2 9 19.1 10.7 19.8L11.5 20.1C12.7 20.6 13.1 21 13.1 21.7C13.1 22.5 12.3 23 11.4 23C10.2 23 9.6 22.4 9.3 21.2H6.9C7.2 23.3 8.9 24.5 11.6 24.5Z' fill='%23111111'/></svg>" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="JS Visualizer" />
+  
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Structured Data / JSON-LD Schema -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "JS Execution Visualizer",
+    "alternateName": "JavaScript Engine & Runtime Debugger",
+    "url": "https://js-execution-visualizer.vercel.app/",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "All",
+    "description": "Interactive JavaScript execution visualizer and educational debugger. Step through JavaScript code execution with animated Call Stack, Stack & Heap Memory, Execution Contexts, Scope Chains, and Event Loop visualization.",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "featureList": [
+      "Interactive Code Editor with CodeMirror 6",
+      "Real-time Call Stack Visualization",
+      "Stack & Heap Memory Model with Pointer Arrows",
+      "Execution Context Creation & Execution Phases",
+      "Scope Chain & Closure Inspection",
+      "Event Loop, Microtasks & Callback Queue Simulation"
+    ]
+  }
+  </script>
 </head>
 <body>
   <div id="app">
@@ -29,10 +80,11 @@
       <div id="header-bubble-mount" class="header-center"></div>
       <div class="header-right">
         <div id="controls-bar"></div>
-        <button id="btn-shortcuts" class="control-btn shortcuts-toggle-btn" title="Keyboard Shortcuts (?)"></button>
-        <button id="btn-theme-toggle" class="control-btn theme-toggle-btn" title="Toggle Light / Dark Theme"></button>
+        <button id="btn-shortcuts" class="control-btn shortcuts-toggle-btn" title="Keyboard Shortcuts (?)" aria-label="Toggle Keyboard Shortcuts"></button>
+        <button id="btn-theme-toggle" class="control-btn theme-toggle-btn" title="Toggle Light / Dark Theme" aria-label="Toggle Theme"></button>
       </div>
     </header>
+
     <!-- Step Progress Bar -->
     <div id="step-progress-container" class="step-progress-container">
       <div id="step-progress-fill" class="step-progress-fill"></div>
@@ -41,42 +93,42 @@
     <!-- ===== MAIN AREA ===== -->
     <main id="main-area">
       <!-- Left: Code Editor -->
-      <section id="editor-section" class="panel glass">
+      <section id="editor-section" class="panel glass" aria-label="JavaScript Code Editor">
         <div class="panel-header">
-          <div class="panel-title">
+          <h2 class="panel-title">
             <span class="panel-icon" id="icon-editor"></span>
             <span>Code Editor</span>
-          </div>
+          </h2>
           <div class="panel-actions">
             <div class="preset-wrapper">
-              <select id="preset-selector" class="preset-select" title="Load a JavaScript learning scenario / preset">
+              <select id="preset-selector" class="preset-select" title="Load a JavaScript learning scenario / preset" aria-label="Select JavaScript Preset Example">
                 <option value="" disabled selected>⚡ Examples & Presets...</option>
               </select>
             </div>
-            <button id="btn-run" class="btn btn-primary" title="Run Code (Ctrl+Enter)">
+            <button id="btn-run" class="btn btn-primary" title="Run Code (Ctrl+Enter)" aria-label="Run Code">
               <span class="btn-icon" id="icon-run"></span>
               <span id="btn-run-text">Run</span>
             </button>
           </div>
         </div>
         <div id="editor-mount" class="panel-body"></div>
-        <div id="step-description" class="step-description"></div>
+        <div id="step-description" class="step-description" aria-live="polite"></div>
       </section>
 
       <!-- Resizer between Editor and Viz -->
       <div class="resizer-gutter resizer-horizontal" id="gutter-editor-viz"></div>
 
       <!-- Right: Visualization Section -->
-      <section id="viz-section">
+      <section id="viz-section" aria-label="Execution Visualizers">
         <!-- Row 1: Call Stack + Execution Context -->
         <div class="viz-row" id="viz-row-1">
           <!-- Call Stack -->
-          <div id="callstack-panel" class="panel glass">
+          <div id="callstack-panel" class="panel glass" aria-label="Call Stack Panel">
             <div class="panel-header">
-              <div class="panel-title">
+              <h2 class="panel-title">
                 <span class="panel-icon icon-stack" id="icon-stack"></span>
                 <span>Call Stack</span>
-              </div>
+              </h2>
               <span class="panel-counter" id="callstack-count">0 frames</span>
             </div>
             <div class="panel-body" id="callstack-body"></div>
@@ -86,12 +138,12 @@
           <div class="resizer-gutter resizer-horizontal" id="gutter-stack-ctx"></div>
 
           <!-- Execution Context -->
-          <div id="execctx-panel" class="panel glass">
+          <div id="execctx-panel" class="panel glass" aria-label="Execution Context Panel">
             <div class="panel-header">
-              <div class="panel-title">
+              <h2 class="panel-title">
                 <span class="panel-icon icon-ctx" id="icon-ctx"></span>
                 <span>Execution Context</span>
-              </div>
+              </h2>
               <span class="panel-counter" id="execctx-count">0 contexts</span>
             </div>
             <div class="panel-body" id="execctx-body"></div>
@@ -103,12 +155,12 @@
 
         <!-- Row 2: Memory Panel -->
         <div class="viz-row viz-row-single" id="viz-row-2">
-          <div id="memory-panel" class="panel glass panel-wide">
+          <div id="memory-panel" class="panel glass panel-wide" aria-label="Memory Panel (Stack and Heap)">
             <div class="panel-header">
-              <div class="panel-title">
+              <h2 class="panel-title">
                 <span class="panel-icon icon-mem" id="icon-mem"></span>
                 <span>Memory</span>
-              </div>
+              </h2>
               <div class="memory-legend" id="memory-legend">
                 <span class="legend-item legend-number">Num</span>
                 <span class="legend-item legend-string">Str</span>
@@ -137,12 +189,12 @@
         <!-- Row 3: Scope Chain + Event Loop -->
         <div class="viz-row" id="viz-row-3">
           <!-- Scope Chain -->
-          <div id="scope-panel" class="panel glass">
+          <div id="scope-panel" class="panel glass" aria-label="Scope Chain Panel">
             <div class="panel-header">
-              <div class="panel-title">
+              <h2 class="panel-title">
                 <span class="panel-icon icon-scope" id="icon-scope"></span>
                 <span>Scope Chain</span>
-              </div>
+              </h2>
             </div>
             <div class="panel-body" id="scope-body"></div>
           </div>
@@ -151,12 +203,12 @@
           <div class="resizer-gutter resizer-horizontal" id="gutter-scope-loop"></div>
 
           <!-- Event Loop -->
-          <div id="eventloop-panel" class="panel glass">
+          <div id="eventloop-panel" class="panel glass" aria-label="Event Loop Panel">
             <div class="panel-header">
-              <div class="panel-title">
+              <h2 class="panel-title">
                 <span class="panel-icon icon-loop" id="icon-loop"></span>
                 <span>Event Loop</span>
-              </div>
+              </h2>
             </div>
             <div class="panel-body eventloop-body" id="eventloop-body">
               <div class="el-section" id="el-webapis">
@@ -178,13 +230,13 @@
     <div class="resizer-gutter resizer-vertical" id="gutter-main-console"></div>
 
     <!-- ===== CONSOLE ===== -->
-    <footer id="console-section" class="panel glass">
+    <footer id="console-section" class="panel glass" aria-label="Console Output">
       <div class="panel-header">
-        <div class="panel-title">
+        <h2 class="panel-title">
           <span class="panel-icon icon-console" id="icon-console"></span>
           <span>Console</span>
-        </div>
-        <button id="btn-clear-console" class="btn btn-ghost btn-sm" title="Clear Console"></button>
+        </h2>
+        <button id="btn-clear-console" class="btn btn-ghost btn-sm" title="Clear Console" aria-label="Clear Console Output"></button>
       </div>
       <div class="panel-body console-body" id="console-body"></div>
     </footer>

@@ -627,6 +627,7 @@ body::before {
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  margin: 0;
 }
 
 .panel-icon {
