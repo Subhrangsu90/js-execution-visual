@@ -21,6 +21,9 @@ import { valueInspector } from './utils/ValueInspector.js';
 import { InfoPopup } from './utils/InfoPopup.js';
 import { ShortcutsModal } from './utils/ShortcutsModal.js';
 import { PRESETS } from './utils/presets.js';
+import { ChallengeMode } from './components/ChallengeMode.js';
+import { ASTInspector } from './components/ASTInspector.js';
+import { GuidedTour } from './components/GuidedTour.js';
 
 // ─── THEME MANAGEMENT ───────────────────────────────────────────
 const THEME_KEY = 'js_vis_theme';
@@ -236,6 +239,55 @@ const controls = new Controls(controlsBar, {
   },
 });
 
+// ─── EDUCATIONAL MODES (QUIZ, AST INSPECTOR, GUIDED TOUR) ────────
+const challengeMode = new ChallengeMode({
+  onLoadCode: (code) => {
+    editor.setCode(code);
+  },
+  onRunVerification: () => {
+    runCode();
+  }
+});
+
+const astInspector = new ASTInspector({
+  onHighlightNode: (loc) => {
+    if (loc && loc.line) {
+      editor.highlightLine(loc.line);
+    }
+  }
+});
+
+const guidedTour = new GuidedTour({
+  onLoadCode: (code) => {
+    editor.setCode(code);
+  },
+  onRunVerification: () => {
+    runCode();
+  }
+});
+
+const modeSelector = document.getElementById('mode-selector');
+if (modeSelector) {
+  modeSelector.addEventListener('change', (e) => {
+    const val = e.target.value;
+    if (val === 'quiz') {
+      challengeMode.open();
+    } else if (val === 'ast') {
+      const code = editor.getCode();
+      if (code.trim()) {
+        const tempInterp = new Interpreter(code);
+        tempInterp.run();
+        if (tempInterp.ast) {
+          astInspector.setAST(tempInterp.ast);
+        }
+      }
+      astInspector.open();
+    } else if (val === 'tour') {
+      guidedTour.openLessonModal();
+    }
+  });
+}
+
 // ─── RUN ────────────────────────────────────────────────────────
 function runCode() {
   // Reset state
@@ -248,6 +300,10 @@ function runCode() {
     // Run interpreter
     const interpreter = new Interpreter(code);
     steps = interpreter.run();
+
+    if (interpreter.ast) {
+      astInspector.setAST(interpreter.ast);
+    }
 
     if (steps.length === 0) return;
 
@@ -285,6 +341,11 @@ function goToStep(index) {
   // Update 3D Bubble
   if (bubble3D) {
     bubble3D.update(snapshot, steps.length);
+  }
+
+  // Sync active AST node
+  if (snapshot.node) {
+    astInspector.setActiveNode(snapshot.node);
   }
 
   // Update editor highlight (line, block, expression, AND floating 3D line execution bubble!)

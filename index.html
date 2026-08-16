@@ -89,7 +89,14 @@
             <span class="logo-subtitle">JavaScript Engine Debugger</span>
           </div>
         </div>
-        <span class="header-badge">Sandbox Mode</span>
+        <div class="mode-selector-wrapper">
+          <select id="mode-selector" class="mode-selector-select" title="Switch Application Mode" aria-label="Select Application Mode">
+            <option value="sandbox" selected>🛠️ Sandbox Mode</option>
+            <option value="quiz">🎯 Challenge / Quiz Mode</option>
+            <option value="ast">🌳 AST / Bytecode Inspector</option>
+            <option value="tour">🎓 Guided Tour & Lessons</option>
+          </select>
+        </div>
       </div>
       <div id="header-bubble-mount" class="header-center"></div>
       <div class="header-right">
