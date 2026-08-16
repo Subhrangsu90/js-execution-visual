@@ -574,9 +574,23 @@ export class Interpreter {
 
   _execForOf(node, env) {
     const iterable = this._execExpr(node.right, env);
-    const items = Array.isArray(iterable) ? iterable
-      : typeof iterable === 'string' ? [...iterable]
-      : [];
+    let items = null;
+    if (Array.isArray(iterable)) {
+      items = iterable;
+    } else if (typeof iterable === 'string') {
+      items = [...iterable];
+    } else if (iterable instanceof Set) {
+      items = Array.from(iterable.values());
+    } else if (iterable instanceof Map) {
+      items = Array.from(iterable.entries());
+    } else if (iterable && typeof iterable[Symbol.iterator] === 'function') {
+      try { items = Array.from(iterable); } catch {}
+    }
+
+    if (!items) {
+      throw new TypeError(`${this._displayValue(iterable)} is not iterable`);
+    }
+
     let iteration = 0;
     for (const item of items) {
       this._checkStepLimit();

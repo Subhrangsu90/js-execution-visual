@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>JS Execution Visualizer — Interactive JavaScript Engine & Memory Debugger</title>
-  <meta name="description" content="Interactive JavaScript execution visualizer and runtime debugger. Step through JS code execution with animated Call Stack, Stack & Heap Memory, Execution Contexts, Scope Chains, Closures, and Event Loop visualization." />
-  <meta name="keywords" content="JavaScript, JS Visualizer, Execution Context, Call Stack, Event Loop, Memory Heap, JS Debugger, Scope Chain, Closures, AST Interpreter, Web APIs, Microtasks, Async JavaScript" />
+  <meta name="description"
+    content="Interactive JavaScript execution visualizer and runtime debugger. Step through JS code execution with animated Call Stack, Stack & Heap Memory, Execution Contexts, Scope Chains, Closures, and Event Loop visualization." />
+  <meta name="keywords"
+    content="JavaScript, JS Visualizer, Execution Context, Call Stack, Event Loop, Memory Heap, JS Debugger, Scope Chain, Closures, AST Interpreter, Web APIs, Microtasks, Async JavaScript" />
   <meta name="author" content="Subhrangsu Bera" />
   <meta name="robots" content="index, follow" />
   <meta name="theme-color" content="#09090b" />
@@ -15,7 +18,8 @@
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://js-execution-visual.vercel.app/" />
   <meta property="og:title" content="JS Execution Visualizer — Interactive JavaScript Engine & Memory Debugger" />
-  <meta property="og:description" content="Step through JS code execution with animated Call Stack, Stack & Heap Memory, Execution Contexts, Scope Chains, Closures, and Event Loop visualization." />
+  <meta property="og:description"
+    content="Step through JS code execution with animated Call Stack, Stack & Heap Memory, Execution Contexts, Scope Chains, Closures, and Event Loop visualization." />
   <meta property="og:image" content="https://js-execution-visual.vercel.app/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
@@ -25,7 +29,8 @@
   <!-- Twitter Meta Tags -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="JS Execution Visualizer — JavaScript Engine Debugger" />
-  <meta name="twitter:description" content="Step-by-step visualizer for JavaScript execution, Call Stack, Memory Heap, Closures, and Event Loop." />
+  <meta name="twitter:description"
+    content="Step-by-step visualizer for JavaScript execution, Call Stack, Memory Heap, Closures, and Event Loop." />
   <meta name="twitter:image" content="https://js-execution-visual.vercel.app/og-image.png" />
 
   <!-- PWA & Favicon -->
@@ -36,14 +41,14 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="JS Visualizer" />
-  
+
   <!-- Inline Anti-FOUC Theme Script -->
   <script>
-    (function() {
+    (function () {
       try {
         var t = localStorage.getItem('js_vis_theme') || 'dark';
         document.documentElement.setAttribute('data-theme', t);
-      } catch(e) {}
+      } catch (e) { }
     })();
   </script>
 
@@ -52,7 +57,9 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet" />
 
   <!-- Structured Data / JSON-LD Schema -->
   <script type="application/ld+json">
@@ -119,6 +126,7 @@
   }
   </script>
 </head>
+
 <body>
   <div id="app">
     <!-- ===== HEADER ===== -->
@@ -131,24 +139,36 @@
             <span class="logo-subtitle">JavaScript Engine Debugger</span>
           </div>
         </div>
-        <div class="mode-selector-wrapper">
-          <select id="mode-selector" class="mode-selector-select" title="Switch Application Mode" aria-label="Select Application Mode">
-            <option value="sandbox" selected>🛠️ Sandbox Mode</option>
-            <option value="quiz">🎯 Challenge / Quiz Mode</option>
-            <option value="ast">🌳 AST / Bytecode Inspector</option>
-            <option value="tour">🎓 Guided Tour & Lessons</option>
-          </select>
+        <div class="mode-selector-container">
+          <div class="mode-selector-wrapper">
+            <select id="mode-selector" class="mode-selector-select" title="Switch Application Mode"
+              aria-label="Select Application Mode">
+              <option value="sandbox" selected>🛠️ Sandbox Mode</option>
+              <option value="quiz">🎯 Challenge / Quiz Mode</option>
+              <option value="ast">🌳 AST / Bytecode Inspector</option>
+              <option value="tour">🎓 Guided Tour & Lessons</option>
+            </select>
+          </div>
+          <div class="mode-selector-wrapper">
+            <select id="engine-selector" class="mode-selector-select" title="Switch Execution Engine"
+              aria-label="Select Execution Engine">
+              <option value="quickjs" selected>⚡ QuickJS Wasm (ES2023)</option>
+              <option value="ast">🌳 AST Interpreter</option>
+            </select>
+          </div>
         </div>
-        <div class="status-pill idle" id="status-pill" title="Engine Execution Status">
+        <!-- <div class="status-pill idle" id="status-pill" title="Engine Execution Status">
           <span class="status-dot"></span>
           <span id="status-text">Idle</span>
-        </div>
+        </div> -->
       </div>
       <div id="header-bubble-mount" class="header-center"></div>
       <div class="header-right">
         <div id="controls-bar"></div>
-        <button id="btn-shortcuts" class="control-btn shortcuts-toggle-btn" title="Keyboard Shortcuts (?)" aria-label="Toggle Keyboard Shortcuts"></button>
-        <button id="btn-theme-toggle" class="control-btn theme-toggle-btn" title="Toggle Light / Dark Theme" aria-label="Toggle Theme"></button>
+        <button id="btn-shortcuts" class="control-btn shortcuts-toggle-btn" title="Keyboard Shortcuts (?)"
+          aria-label="Toggle Keyboard Shortcuts"></button>
+        <button id="btn-theme-toggle" class="control-btn theme-toggle-btn" title="Toggle Light / Dark Theme"
+          aria-label="Toggle Theme"></button>
       </div>
     </header>
 
@@ -168,7 +188,8 @@
           </h2>
           <div class="panel-actions">
             <div class="preset-wrapper">
-              <select id="preset-selector" class="preset-select" title="Load a JavaScript learning scenario / preset" aria-label="Select JavaScript Preset Example">
+              <select id="preset-selector" class="preset-select" title="Load a JavaScript learning scenario / preset"
+                aria-label="Select JavaScript Preset Example">
                 <option value="" disabled selected>⚡ Examples & Presets...</option>
               </select>
             </div>
@@ -303,7 +324,8 @@
           <span class="panel-icon icon-console" id="icon-console"></span>
           <span>Console</span>
         </h2>
-        <button id="btn-clear-console" class="btn btn-ghost btn-sm" title="Clear Console" aria-label="Clear Console Output"></button>
+        <button id="btn-clear-console" class="btn btn-ghost btn-sm" title="Clear Console"
+          aria-label="Clear Console Output"></button>
       </div>
       <div class="panel-body console-body" id="console-body"></div>
     </footer>
@@ -312,12 +334,18 @@
     <main id="quiz-page-container" class="quiz-page-container hidden" aria-label="JavaScript Engine Quiz Page"></main>
 
     <!-- ===== FLOATING GITHUB BADGE (BOTTOM RIGHT) ===== -->
-    <a href="https://github.com/Subhrangsu90/js-execution-visual" target="_blank" rel="noopener noreferrer" class="author-github-badge" title="View Source Code on GitHub by Subhrangsu Bera" aria-label="GitHub Repository by Subhrangsu Bera">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+    <a href="https://github.com/Subhrangsu90/js-execution-visual" target="_blank" rel="noopener noreferrer"
+      class="author-github-badge" title="View Source Code on GitHub by Subhrangsu Bera"
+      aria-label="GitHub Repository by Subhrangsu Bera">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+        <path
+          d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+      </svg>
       <span>Made by <strong>Subhrangsu Bera</strong></span>
     </a>
   </div>
 
   <script type="module" src="/src/main.js"></script>
 </body>
+
 </html>

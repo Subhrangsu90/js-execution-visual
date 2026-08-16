@@ -9,12 +9,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@codemirror/lang-javascript": "^6.2.2",
+    "@codemirror/theme-one-dark": "^6.1.2",
     "acorn": "^8.14.0",
     "codemirror": "^6.0.1",
-    "@codemirror/lang-javascript": "^6.2.2",
-    "@codemirror/theme-one-dark": "^6.1.2"
+    "quickjs-emscripten": "^0.32.0"
   },
   "devDependencies": {
-    "vite": "^6.3.5"
+    "top-level-await": "^1.1.0",
+    "vite": "^6.3.5",
+    "vite-plugin-top-level-await": "^1.6.0",
+    "vite-plugin-wasm": "^3.6.0"
   }
 }

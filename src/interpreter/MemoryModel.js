@@ -178,13 +178,22 @@ export class MemoryModel {
   stackSnapshot(environments) {
     const entries = [];
     for (const env of environments) {
-      for (const [name, entry] of env.variables) {
+      if (!env || !env.variables) continue;
+
+      const varEntries = env.variables instanceof Map
+        ? Array.from(env.variables.entries())
+        : Array.isArray(env.variables)
+        ? env.variables.map(v => [v.name, v])
+        : Object.entries(env.variables);
+
+      for (const [name, entry] of varEntries) {
+        if (!entry) continue;
         const desc = this.describeValue(entry.value);
         entries.push({
-          name,
+          name: name || entry.name,
           scope: env.name,
           scopeId: env.id,
-          kind: entry.kind,
+          kind: entry.kind || 'let',
           ...desc,
           isRef: !!desc.heapId,
           refTarget: desc.heapId || null,

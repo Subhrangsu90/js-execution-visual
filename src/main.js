@@ -16,6 +16,7 @@ import { EventLoopPanel } from './components/EventLoopPanel.js';
 import { ConsolePanel } from './components/ConsolePanel.js';
 import { Controls } from './components/Controls.js';
 import { Interpreter } from './interpreter/Interpreter.js';
+import { QuickJSInterpreter, initQuickJS } from './interpreter/QuickJSInterpreter.js';
 import { ExecutionBubble3D } from './components/ExecutionBubble3D.js';
 import { valueInspector } from './utils/ValueInspector.js';
 import { InfoPopup } from './utils/InfoPopup.js';
@@ -329,8 +330,22 @@ function handleHashRoute() {
 window.addEventListener('hashchange', handleHashRoute);
 setTimeout(handleHashRoute, 100);
 
+// ─── ENGINE SELECTION ───────────────────────────────────────────
+const engineSelector = document.getElementById('engine-selector');
+let selectedEngine = engineSelector ? engineSelector.value : 'quickjs';
+
+if (engineSelector) {
+  engineSelector.addEventListener('change', (e) => {
+    selectedEngine = e.target.value;
+    runCode();
+  });
+}
+
+// Pre-initialize QuickJS Wasm binary
+initQuickJS().catch(err => console.warn('QuickJS Wasm pre-init warning:', err));
+
 // ─── RUN ────────────────────────────────────────────────────────
-function runCode() {
+async function runCode() {
   // Reset state
   resetExecution();
 
@@ -338,9 +353,14 @@ function runCode() {
   if (!code.trim()) return;
 
   try {
-    // Run interpreter
-    const interpreter = new Interpreter(code);
-    steps = interpreter.run();
+    let interpreter;
+    if (selectedEngine === 'quickjs') {
+      interpreter = new QuickJSInterpreter(code);
+      steps = await interpreter.run();
+    } else {
+      interpreter = new Interpreter(code);
+      steps = interpreter.run();
+    }
 
     if (interpreter.ast) {
       astInspector.setAST(interpreter.ast);
