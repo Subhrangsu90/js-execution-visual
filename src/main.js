@@ -224,6 +224,12 @@ const controls = new Controls(controlsBar, {
   onStepForward: () => {
     if (currentStep < steps.length - 1) goToStep(currentStep + 1);
   },
+  onStepOver: () => {
+    stepOver();
+  },
+  onStepOut: () => {
+    stepOut();
+  },
   onPlay: () => startPlayback(),
   onPause: () => stopPlayback(),
   onReset: () => resetExecution(),
@@ -360,6 +366,54 @@ function runCode() {
   }
 }
 
+function updateStatusPill(state, text) {
+  const pill = document.getElementById('status-pill');
+  const txt = document.getElementById('status-text');
+  if (!pill || !txt) return;
+
+  pill.className = `status-pill ${state}`;
+  txt.textContent = text;
+}
+
+function stepOver() {
+  if (steps.length === 0 || currentStep >= steps.length - 1) return;
+  const currentSnapshot = steps[currentStep >= 0 ? currentStep : 0];
+  const targetDepth = currentSnapshot?.callStack?.length || 0;
+
+  let nextIdx = Math.max(0, currentStep) + 1;
+  while (nextIdx < steps.length - 1) {
+    const snap = steps[nextIdx];
+    const depth = snap?.callStack?.length || 0;
+    if (depth <= targetDepth) {
+      break;
+    }
+    nextIdx++;
+  }
+  goToStep(nextIdx);
+}
+
+function stepOut() {
+  if (steps.length === 0 || currentStep >= steps.length - 1) return;
+  const currentSnapshot = steps[currentStep >= 0 ? currentStep : 0];
+  const targetDepth = currentSnapshot?.callStack?.length || 0;
+
+  if (targetDepth <= 1) {
+    goToStep(steps.length - 1);
+    return;
+  }
+
+  let nextIdx = Math.max(0, currentStep) + 1;
+  while (nextIdx < steps.length - 1) {
+    const snap = steps[nextIdx];
+    const depth = snap?.callStack?.length || 0;
+    if (depth < targetDepth) {
+      break;
+    }
+    nextIdx++;
+  }
+  goToStep(nextIdx);
+}
+
 function goToStep(index) {
   if (index < 0 || index >= steps.length) return;
   currentStep = index;
@@ -404,6 +458,15 @@ function goToStep(index) {
 
   // Controls state
   controls.updateState(currentStep, steps.length, isPlaying);
+
+  // Update status pill
+  if (isPlaying) {
+    updateStatusPill('running', `Running (${currentStep + 1}/${steps.length})`);
+  } else if (currentStep >= steps.length - 1) {
+    updateStatusPill('done', 'Done');
+  } else {
+    updateStatusPill('paused', `Paused (${currentStep + 1}/${steps.length})`);
+  }
 
   // Update step progress bar
   const progressFill = document.getElementById('step-progress-fill');
@@ -485,6 +548,7 @@ function resetExecution() {
   stepDescEl.textContent = '';
   if (bubble3D) bubble3D.update(null);
   highlightActivePanel(null);
+  updateStatusPill('idle', 'Idle');
 
   // Clear all panels with SVG icons
   callstackBody.innerHTML = `<div class="empty-state"><div class="empty-state-icon">${icons.stack(28)}</div><div>Call stack is empty</div></div>`;

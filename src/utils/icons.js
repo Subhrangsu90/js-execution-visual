@@ -42,6 +42,20 @@ export const icons = {
       <line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>
     </svg>`,
 
+  stepOver: (size = 14) => `
+    <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 13a6 6 0 0 0-12 0" />
+      <polyline points="15 10 18 13 21 10" />
+      <circle cx="12" cy="17" r="1.5" fill="currentColor" />
+    </svg>`,
+
+  stepOut: (size = 14) => `
+    <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 10a6 6 0 0 1 12 0" />
+      <polyline points="9 7 6 10 3 7" />
+      <line x1="12" y1="13" x2="12" y2="20" />
+    </svg>`,
+
   reset: (size = 14) => `
     <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>

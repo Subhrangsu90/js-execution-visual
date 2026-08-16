@@ -37,21 +37,35 @@ export class ShortcutsModal {
 
             <div class="shortcut-item">
               <div class="shortcut-keys">
-                <kbd>Space</kbd> or <kbd>F10</kbd>
+                <kbd>→</kbd> or <kbd>F11</kbd>
               </div>
-              <span class="shortcut-desc">Step Forward</span>
+              <span class="shortcut-desc">Step Into / Forward</span>
             </div>
 
             <div class="shortcut-item">
               <div class="shortcut-keys">
-                <kbd>Shift</kbd> + <kbd>F10</kbd>
+                <kbd>F10</kbd> or <kbd>O</kbd>
               </div>
-              <span class="shortcut-desc">Step Backward</span>
+              <span class="shortcut-desc">Step Over Function</span>
             </div>
 
             <div class="shortcut-item">
               <div class="shortcut-keys">
-                <kbd>P</kbd>
+                <kbd>Shift</kbd> + <kbd>F11</kbd> or <kbd>U</kbd>
+              </div>
+              <span class="shortcut-desc">Step Out of Function</span>
+            </div>
+
+            <div class="shortcut-item">
+              <div class="shortcut-keys">
+                <kbd>←</kbd>
+              </div>
+              <span class="shortcut-desc">Step Back</span>
+            </div>
+
+            <div class="shortcut-item">
+              <div class="shortcut-keys">
+                <kbd>Space</kbd> or <kbd>F8</kbd>
               </div>
               <span class="shortcut-desc">Play / Pause Execution</span>
             </div>

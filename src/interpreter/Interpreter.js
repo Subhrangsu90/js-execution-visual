@@ -260,27 +260,51 @@ export class Interpreter {
     this.globalEnv.define('undefined', undefined, 'const');
     this.globalEnv.define('NaN', NaN, 'const');
     this.globalEnv.define('Infinity', Infinity, 'const');
+    this.globalEnv.define('parseInt', parseInt, 'const');
+    this.globalEnv.define('parseFloat', parseFloat, 'const');
+    this.globalEnv.define('isNaN', isNaN, 'const');
+    this.globalEnv.define('isFinite', isFinite, 'const');
 
-    // Math (basic)
+    // Math
     const mathObj = {
       floor: Math.floor,
       ceil: Math.ceil,
       round: Math.round,
+      trunc: Math.trunc,
       random: Math.random,
       max: Math.max,
       min: Math.min,
       abs: Math.abs,
       pow: Math.pow,
       sqrt: Math.sqrt,
+      sign: Math.sign,
+      sin: Math.sin,
+      cos: Math.cos,
+      tan: Math.tan,
+      log: Math.log,
+      log10: Math.log10,
+      exp: Math.exp,
       PI: Math.PI,
+      E: Math.E,
+      SQRT2: Math.SQRT2,
     };
     mathObj.__isBuiltin = true;
     this.globalEnv.define('Math', mathObj, 'const');
 
-    // Array.isArray
-    const arrayObj = { isArray: Array.isArray };
+    // Array
+    const arrayObj = { isArray: Array.isArray, from: Array.from, of: Array.of };
     arrayObj.__isBuiltin = true;
     this.globalEnv.define('Array', arrayObj, 'const');
+
+    // Object
+    const objectObj = { keys: Object.keys, values: Object.values, entries: Object.entries, assign: Object.assign };
+    objectObj.__isBuiltin = true;
+    this.globalEnv.define('Object', objectObj, 'const');
+
+    // JSON
+    const jsonObj = { parse: JSON.parse, stringify: JSON.stringify };
+    jsonObj.__isBuiltin = true;
+    this.globalEnv.define('JSON', jsonObj, 'const');
   }
 
   // ─── HOISTING ─────────────────────────────────────────────────
@@ -824,12 +848,12 @@ export class Interpreter {
         return result;
       }
 
-      // console.log, etc.
+      // console.log, Math.floor, etc.
       if (obj && obj.__isBuiltin && typeof callee === 'function') {
         const args = node.arguments.map(a => this._execExpr(a, env));
-        callee(...args);
+        const result = callee.apply(obj, args);
         this._recordStep(node, `${calleeName}(${args.map(a => this._displayValue(a)).join(', ')})`);
-        return undefined;
+        return result;
       }
 
       // Promise.resolve
