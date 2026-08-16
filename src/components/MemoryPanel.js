@@ -344,12 +344,20 @@ export class MemoryPanel {
     const containerRect = this.arrowsSvg.getBoundingClientRect();
     if (containerRect.width === 0 || containerRect.height === 0) return;
 
-    for (const [heapId, dotEl] of this._refDots.entries()) {
-      const cardEl = this._heapCards.get(heapId);
-      if (!dotEl || !cardEl) continue;
+    // Scan all ref dots in Stack, Scope Chain, and Execution Context panels
+    const allDots = document.querySelectorAll('.mem-ref-dot[data-ref]');
+    allDots.forEach(dotEl => {
+      const heapId = dotEl.dataset.ref || dotEl.getAttribute('data-ref');
+      if (!heapId) return;
+
+      const cardEl = this.heapEl.querySelector(`.mem-heap-object[data-heap-id="${heapId}"]`);
+      if (!dotEl || !cardEl) return;
 
       const dotRect = dotEl.getBoundingClientRect();
       const cardRect = cardEl.getBoundingClientRect();
+
+      if (dotRect.width === 0 && dotRect.height === 0) return;
+      if (cardRect.width === 0 && cardRect.height === 0) return;
 
       const startX = dotRect.right - containerRect.left;
       const startY = dotRect.top + dotRect.height / 2 - containerRect.top;
@@ -358,16 +366,16 @@ export class MemoryPanel {
       const endY = cardRect.top + 20 - containerRect.top;
 
       const dx = endX - startX;
-      const cx1 = startX + dx * 0.5;
+      const cx1 = startX + Math.max(20, dx * 0.5);
       const cy1 = startY;
-      const cx2 = startX + dx * 0.5;
+      const cx2 = startX + Math.max(20, dx * 0.5);
       const cy2 = endY;
 
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       path.setAttribute('d', `M ${startX} ${startY} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${endX} ${endY}`);
       path.setAttribute('class', 'active');
       this.arrowsSvg.appendChild(path);
-    }
+    });
   }
 
   _formatPrimitive(val, varName = '') {

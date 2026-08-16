@@ -172,16 +172,20 @@ export class ScopeChainPanel {
       const short = val.length > 20 ? val.slice(0, 20) + '…' : val;
       return `<span class="val-string">"${this._escapeHtml(short)}"</span>`;
     }
+
+    const refId = val?.heapId || val?.__heapId || null;
+    const dotHtml = refId ? `<span class="mem-ref-dot" data-ref="${refId}"></span>` : '';
+
     if (val && val.__isFn) {
       const fnTitle = val.name || varName || 'function';
-      return `<span class="val-function val-inspectable" data-inspect="${this._escAttr(JSON.stringify(val))}" data-inspect-type="function" data-inspect-title="${this._escapeHtml(fnTitle)}">ƒ ${val.name || 'anonymous'}()</span>`;
+      return `<span class="val-function val-inspectable" data-inspect="${this._escAttr(JSON.stringify(val))}" data-inspect-type="function" data-inspect-title="${this._escapeHtml(fnTitle)}">ƒ ${val.name || 'anonymous'}()</span> ${dotHtml}`;
     }
     if (typeof val === 'function') return `<span class="val-function">ƒ native</span>`;
     if (Array.isArray(val)) {
-      return `<span class="val-array val-inspectable" data-inspect="${this._escAttr(JSON.stringify(val))}" data-inspect-type="array" data-inspect-title="${this._escapeHtml(varName || 'Array')}">[Array(${val.length})]</span>`;
+      return `<span class="val-array val-inspectable" data-inspect="${this._escAttr(JSON.stringify(val))}" data-inspect-type="array" data-inspect-title="${this._escapeHtml(varName || 'Array')}">[Array(${val.length})]</span> ${dotHtml}`;
     }
     if (typeof val === 'object') {
-      return `<span class="val-object val-inspectable" data-inspect="${this._escAttr(JSON.stringify(val))}" data-inspect-type="object" data-inspect-title="${this._escapeHtml(varName || 'Object')}">{…}</span>`;
+      return `<span class="val-object val-inspectable" data-inspect="${this._escAttr(JSON.stringify(val))}" data-inspect-type="object" data-inspect-title="${this._escapeHtml(varName || 'Object')}">{…}</span> ${dotHtml}`;
     }
     return String(val);
   }
