@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>JS Execution Visualizer — Runtime Debugger</title>
   <meta name="description" content="Advanced JavaScript execution visualizer with animated call stack, memory heap, execution contexts, scope chains, and event loop visualization." />
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23f59e0b'><path d='M13 2L3 14h9l-1 8 10-12h-9l1-8z'/></svg>" />
+  <meta name="theme-color" content="#09090b" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23F7DF1E'/><path d='M19.5 24.5C20.5 24.5 21.8 24 22.3 23.2C22.6 22.7 22.7 22.1 22.7 20.8V14.5H20V20.5C20 21.2 19.8 21.6 19.3 21.6C18.8 21.6 18.5 21.2 18.5 20.5H16C16 22.7 17.3 24.5 19.5 24.5ZM11.6 24.5C13.8 24.5 15.1 23.3 15.1 21.4C15.1 19.7 14.1 18.8 12.3 18.1L11.5 17.8C10.5 17.4 10 17 10 16.3C10 15.6 10.6 15 11.6 15C12.5 15 13.1 15.4 13.4 16.2H15.8C15.5 14.2 14 13 11.6 13C9.4 13 8 14.3 8 16.4C8 18.2 9 19.1 10.7 19.8L11.5 20.1C12.7 20.6 13.1 21 13.1 21.7C13.1 22.5 12.3 23 11.4 23C10.2 23 9.6 22.4 9.3 21.2H6.9C7.2 23.3 8.9 24.5 11.6 24.5Z' fill='%23111111'/></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -17,7 +19,10 @@
       <div class="header-left">
         <div class="logo">
           <span class="logo-icon" id="logo-icon"></span>
-          <h1>JS Execution Visualizer</h1>
+          <div class="logo-text-group">
+            <h1 class="logo-title">JS Execution Visualizer</h1>
+            <span class="logo-subtitle">JavaScript Engine Debugger</span>
+          </div>
         </div>
         <span class="header-badge">Sandbox Mode</span>
       </div>

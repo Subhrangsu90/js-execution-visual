@@ -305,35 +305,41 @@ body::before {
 .logo {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-md);
 }
 
 .logo-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent-amber);
-  filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.4));
-  animation: logoPulse 3s ease-in-out infinite;
+  filter: drop-shadow(0 0 10px rgba(247, 223, 30, 0.4));
+  transition: transform var(--duration-fast, 0.15s) ease;
 }
 
-@keyframes logoPulse {
-
-  0%,
-  100% {
-    filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.3));
-  }
-
-  50% {
-    filter: drop-shadow(0 0 14px rgba(245, 158, 11, 0.7));
-  }
+.logo-icon:hover {
+  transform: scale(1.06);
 }
 
-.logo h1 {
-  font-size: var(--font-size-lg);
-  font-weight: 700;
+.logo-text-group {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.15;
+}
+
+.logo-title {
+  font-size: 1.05rem;
+  font-weight: 800;
   letter-spacing: -0.3px;
   color: var(--text-primary);
+}
+
+.logo-subtitle {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  color: #f59e0b;
+  text-transform: uppercase;
 }
 
 .header-badge {

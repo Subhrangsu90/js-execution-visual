@@ -51,7 +51,7 @@ if (btnShortcuts) {
 }
 
 // ─── POPULATE STATIC SVG ICONS ───────────────────────────────────
-document.getElementById('logo-icon').innerHTML = icons.lightning(22);
+document.getElementById('logo-icon').innerHTML = icons.jsBadge(28);
 document.getElementById('icon-editor').innerHTML = icons.code(16);
 document.getElementById('icon-run').innerHTML = icons.play(14);
 document.getElementById('icon-stack').innerHTML = icons.stack(16);
@@ -440,4 +440,22 @@ window.addEventListener('resize', () => {
 const infoPopup = new InfoPopup();
 infoPopup.attachToHeaders();
 
+// ─── SERVICE WORKER REGISTRATION ───────────────────────────────
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      console.warn('Service Worker registration failed:', err);
+    });
+  });
+} else if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      console.log('⚡ Service Worker registered in dev mode:', reg.scope);
+    }).catch((err) => {
+      console.warn('Service Worker dev registration failed:', err);
+    });
+  });
+}
+
 console.log('%c⚡ JS Execution Visualizer loaded', 'color: #f59e0b; font-weight: bold; font-size: 14px');
+
