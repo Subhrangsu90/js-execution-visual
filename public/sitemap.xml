@@ -1,9 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <!-- Main Playground & Visualizer -->
   <url>
     <loc>https://js-execution-visual.vercel.app/</loc>
     <lastmod>2026-08-16</lastmod>
-    <changefreq>weekly</changefreq>
+    <changefreq>daily</changefreq>
     <priority>1.0</priority>
+  </url>
+  <!-- JavaScript Engine Quiz & Challenges -->
+  <url>
+    <loc>https://js-execution-visual.vercel.app/#quiz</loc>
+    <lastmod>2026-08-16</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <!-- AST & V8 Bytecode Inspector -->
+  <url>
+    <loc>https://js-execution-visual.vercel.app/#ast</loc>
+    <lastmod>2026-08-16</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <!-- Guided Lessons & Interactive Tutorials -->
+  <url>
+    <loc>https://js-execution-visual.vercel.app/#tour</loc>
+    <lastmod>2026-08-16</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
   </url>
 </urlset>

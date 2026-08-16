@@ -14,8 +14,11 @@
   <!-- Open Graph / Social Media Meta Tags -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://js-execution-visual.vercel.app/" />
-  <meta property="og:title" content="JS Execution Visualizer — JavaScript Engine Debugger" />
-  <meta property="og:description" content="Visualize JavaScript execution frame by frame. Inspect Call Stack, Memory Heap, Execution Contexts, Scope Chains, and Event Loop in real-time." />
+  <meta property="og:title" content="JS Execution Visualizer — Interactive JavaScript Engine & Memory Debugger" />
+  <meta property="og:description" content="Step through JS code execution with animated Call Stack, Stack & Heap Memory, Execution Contexts, Scope Chains, Closures, and Event Loop visualization." />
+  <meta property="og:image" content="https://js-execution-visual.vercel.app/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
   <meta property="og:site_name" content="JS Execution Visualizer" />
   <meta property="og:locale" content="en_US" />
 
@@ -23,6 +26,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="JS Execution Visualizer — JavaScript Engine Debugger" />
   <meta name="twitter:description" content="Step-by-step visualizer for JavaScript execution, Call Stack, Memory Heap, Closures, and Event Loop." />
+  <meta name="twitter:image" content="https://js-execution-visual.vercel.app/og-image.png" />
 
   <!-- PWA & Favicon -->
   <link rel="manifest" href="/manifest.json" />
@@ -72,7 +76,40 @@
       "Stack & Heap Memory Model with Pointer Arrows",
       "Execution Context Creation & Execution Phases",
       "Scope Chain & Closure Inspection",
-      "Event Loop, Microtasks & Callback Queue Simulation"
+      "Event Loop, Microtasks & Callback Queue Simulation",
+      "Interactive JavaScript Engine Challenges & Quiz"
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "How does the JavaScript Call Stack work?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The JavaScript Call Stack is a LIFO (Last In, First Out) structure that manages execution context frames. Each function call pushes a frame onto the stack, which is popped when the function returns."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What is the difference between Stack and Heap memory in JavaScript?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Stack memory stores primitive values and execution references, while Heap memory handles dynamic object allocations, array data, and preserved closure environments."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How does the JavaScript Event Loop prioritize Microtasks and Macrotasks?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The Event Loop continuously checks the Call Stack. When empty, it drains all Microtasks (Promise callbacks, queueMicrotask) before processing a single Macrotask (setTimeout, setInterval)."
+        }
+      }
     ]
   }
   </script>

@@ -297,6 +297,7 @@ function handleHashRoute() {
   const hash = window.location.hash.replace('#', '').toLowerCase();
   if (['quiz', 'challenge'].includes(hash)) {
     challengeMode.open(false);
+    document.title = "JavaScript Engine Challenges & Quiz — JS Execution Visualizer";
   } else if (['ast', 'bytecode'].includes(hash)) {
     const code = editor.getCode();
     if (code.trim()) {
@@ -307,12 +308,15 @@ function handleHashRoute() {
       }
     }
     astInspector.open(false);
+    document.title = "AST & V8 Bytecode Inspector — JS Execution Visualizer";
   } else if (['tour', 'lesson', 'lessons'].includes(hash)) {
     guidedTour.openLessonModal(false);
+    document.title = "Guided Interactive Lessons & Tutorials — JS Execution Visualizer";
   } else {
     challengeMode.close(false);
     astInspector.close(false);
     guidedTour.endTour(false);
+    document.title = "JS Execution Visualizer — Interactive JavaScript Engine & Memory Debugger";
   }
 }
 
